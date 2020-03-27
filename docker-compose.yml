@@ -1,87 +1,82 @@
 version: '3'
 services:
+  netdata_monitor:
+    image: manoskoutoulakis/netdata_nginx:latest
+    environment:
+      - ID=${NETDATA_ID}
+    ports:
+      - 19998:19998
+    volumes:
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    container_name: "obc_source_monitoring"
+    
   postgres:
     image: postgres:9.6
     environment:
-      - POSTGRES_USER=airflow
-      - POSTGRES_PASSWORD=airflow
-      - POSTGRES_DB=airflow
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     ports:
-      - "5432:5432"
-    networks:
-      main_net:
-  restapi:
-    image: manoskoutoulakis/obc_client:latest
-    environment:
-      - OBC_USER_ID=${OBC_USER_ID}
-    depends_on:
-      - postgres
-      - airflowserver
-    restart: always
-    volumes:
-      # docker connect with client to get info or execute commands
-      - /var/run/docker.sock:/var/run/docker.sock
-      # volume which share data with airflow
-      - dagvolume:/code/generated_dags
-    ports:
-      - "5000:5000"
-    networks:
-      air_rest:
-        ipv4_address: 172.18.0.4
-      main_net:
-    container_name: executor_OBC_Client
+      - "${EXECUTOR_DB_PORT}:5432"
+    container_name: "local_executor_db_${EXECUTOR_INSTANCE}"
 
   airflowserver:
-    image: puckel/docker-airflow:1.10.8
-    build:
-      context: https://github.com/puckel/docker-airflow.git#1.10.8
-      dockerfile: Dockerfile
-      args:
-        AIRFLOW_DEPS: gcp_api,s3
-        PYTHON_DEPS: sqlalchemy==1.2.0
+    image: manoskoutoulakis/docker-obc-airflow:1.10.9
     restart: always
     depends_on:
       - postgres
+      - netdata_monitor
     environment:
+      #Airflow configuration
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:${EXECUTOR_DB_PORT}/airflow
+      - AIRFLOW__WEBSERVER__BASE_URL=http://localhost:8080/${OBC_USER_ID}
       - LOAD_EX=n
       - EXECUTOR=Local
       - FERNET_KEY=jsDPRErfv8Z_eVTnGfF8ywd19j4pyqE3NpdUBA_oRTo=
+      #OBC Client environment variables
+      - NETDATA_ID=${NETDATA_ID}
+      - OBC_USER_ID=${OBC_USER_ID}
+      - PUBLIC_IP=${PUBLIC_IP}
+      - EXECUTOR_INSTANCE=${EXECUTOR_INSTANCE}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - NETDATA_MONITORING_PORT=${NETDATA_MONITORING_PORT}
+      - OBC_EXECUTOR_PORT=${OBC_EXECUTOR_PORT}
+      - OBC_AIRFLOW_PORT=${OBC_AIRFLOW_PORT}
+      - EXECUTOR_DB_PORT=${EXECUTOR_DB_PORT}
+      - FLASK_ENV=development
     volumes:
-      # Volume which share data with client
+      # Folder where airflow should store files
       - dagvolume:/usr/local/airflow/dags
-      # Folder where airflow should store its log files
-      #- ./logs:/usr/local/airflow/logs
+      - logvolume:/usr/local/airflow/logs
+      - reportvolume:/usr/local/airflow/REPORTS
       # Configuration File
-      - ./config/airflow.cfg:/usr/local/airflow/airflow.cfg
+      - ./airflow.cfg:/usr/local/airflow/airflow.cfg
       - /var/run/docker.sock:/var/run/docker.sock
       # For custom plugins
-      # - ./plugins:/usr/local/airflow/plugins
+      #- ./plugins:/usr/local/airflow/plugins
     ports:
-      - "8080:8080"
-    networks:
-      air_rest:
-        ipv4_address: 172.18.0.5
-      main_net:
+      - "${OBC_AIRFLOW_PORT}:8080"
+      - "${OBC_EXECUTOR_PORT}:5000"
     command: webserver
     healthcheck:
       test: ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-webserver.pid ]"]
       interval: 15s
       timeout: 15s
       retries: 3
-    container_name: executor_airflow
-
+    container_name: "executor_airflow_${EXECUTOR_INSTANCE}"
 volumes:
-  # client-airflow dags volume
+  # Dag volumes 
   dagvolume:
-networks:
-  #Communication between client and airflow restapi
-  # 172.18.0.4 --> client IP
-  # 172.18.0.5 --> airflow IP
-  air_rest:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-      - subnet: 172.18.0.0/16
-  # Communication with all services 
-  main_net:
+  logvolume:
+  reportvolume:  
+  
+
+
+
+
