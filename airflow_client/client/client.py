@@ -48,26 +48,27 @@ def connect_to_airflow_db():
     '''
     Connect to airflow Postgresql and allow us execute query from obc_client
     '''
-    conn = pg8000.connect(
+    conn=pg8000.connect(
         database=os.environ['POSTGRES_DB'],
         user=os.environ['POSTGRES_USER'], 
         password=os.environ['POSTGRES_PASSWORD'],
         host=os.environ['PUBLIC_IP'],
         port=int(os.environ['EXECUTOR_DB_PORT']))
+    cursor= conn.cursor()
+    return cursor
 
-    return conn
 
+
+
+app = Flask(__name__)
+# connect to airflow db (As a global command)
+db_ctrl = connect_to_airflow_db()
 def execute_query(query):
     '''
     execute the query and return the result as a list
     '''
-    conn = connect_to_airflow_db()
-    cursor= conn.cursor()
-    result = cursor.execute(query)
+    result = db_ctrl.execute(query)
     return result
-
-
-app = Flask(__name__)
 
 # Run server
 if __name__ == '__main__':
@@ -486,5 +487,5 @@ def dags_data():
                 })
             yield f"data:{json_data}\n\n"
 
-            time.sleep(10)
+            time.sleep(15)
     return Response(get_dag_data(), mimetype='text/event-stream')
