@@ -101,7 +101,7 @@ def get_full_path(filename):
     # elif dag_type == 'tool':
     #     return f"{dag_tl_directory}/{filename}"
     return f"{dag_directory}{filename}.py"
-def generate_file(dag_id,instructions):
+def generate_dag_file(dag_id,instructions):
     '''
     Get the data from request to generate the dag file
     name : The name of file to be generated
@@ -182,13 +182,13 @@ def delete_dag(dag_id):
 
 
 
-def get_tool_OBC_rest(callback,tool_id, tl_name, tl_edit,tl_version):
+def get_tool_OBC_rest(callback,tool_id, tl_name, tl_edit, tl_version,tl_type):
     '''
     Send GET request to OBC REST to get the dagfile
     RETURN dag File contents
-    0.0.0.0:8200 MUST BE CHANGED WITH THE MAIN OBC SERVER
     '''
-    response = requests.get(f'{callback}rest/tools/{tl_name}/{tl_version}/{tl_edit}/?dag=true&tool_id={tool_id}')
+    dag_contents={}
+    response = requests.get(f'{callback}rest/tools/{tl_name}/{tl_version}/{tl_edit}/?type=true&tool_id={tool_id}')
 
     if response.status_code != 200:
         print_f(f"Error while retrieving data. ERROR_CODE : {response.status_code}")
@@ -201,13 +201,30 @@ def get_tool_OBC_rest(callback,tool_id, tl_name, tl_edit,tl_version):
     return dag_contents
 
 
-def get_workflow_OBC_rest(callback,wf_name, wf_edit,workflow_id):
+def get_workflow_OBC_rest(callback,wf_name, wf_edit,wf_type,workflow_id):
     '''
     Send GET request to OBC REST to get the dagfile
     RETURN dag File contents
     '''
-    response = requests.get(f'{callback}rest/workflows/{wf_name}/{wf_edit}/?dag=true&workflow_id={workflow_id}')
-    dag_contents={}
+    url = f'{callback}rest/workflows/{wf_name}/{wf_edit}/?type={wf_type}&workflow_id={workflow_id}'
+    if wf_type=="airflow":
+        response = requests.get(url)
+        dag_contents={}
+    elif wf_type=="cwl":
+        response = requests.get(url)
+        # folder creation, unzip file into the dag folder 
+        cwl_zip_path= f"{os.environ['AIRFLOW_HOME']}/dags/cwl/{workflow_id}" 
+        try: 
+            os.mkdir(cwl_zip_path)
+        except OSError:
+            print("Creation of the directory %s failed" % cwl_zip_path)
+        else:
+            print("Successfully created the directory %s" % cwl_zip_path) 
+        if response.status_code == 200:
+            with open("{cwl_zip_path}/{workflow_id}.zip", 'wb') as f:
+                f.write(response.content)
+            with zipfile.ZipFile(f"{cwl_zip_path}/{workflow_id}.zip",'r') as zip_ref:
+                zip_ref.extractall(cwl_zip_path)
     if response.status_code != 200:
         print_f(f"Error while retrieving data. ERROR_CODE : {response.status_code}")
         dag_contents['success']='false'
@@ -290,20 +307,18 @@ def run_wf():
     '''
     payload={} # Future changes for scheduling workflow
     d = request.get_data()
-    app.logger.info(str(d))
     data = json.loads(request.get_data())
 
     name = data['name']
     edit = data['edit']
     work_type = data['type']
-    callback= data['callback']
-    
-    print_f(request.base_url)
-    app.logger.info(data)
+    callback= data['callback']        
+
     if work_type == 'tool':
         tool_id = data['tool_id']
         version = data['version']
-        dag_contents= get_tool_OBC_rest(callback,name,edit,version)
+        tool_type= data['tool_type']
+        dag_contents= get_tool_OBC_rest(callback,name,edit,version, tool_type)
         try:
             if dag_contents['success']!='failed':
                 generate_file(tool_id)
@@ -316,13 +331,22 @@ def run_wf():
             payload=dag_contents
     elif work_type == 'workflow':
         workflow_id = data['workflow_id']
-        dag_contents = get_workflow_OBC_rest(callback,name,edit,workflow_id)
-        if dag_contents['success']!='failed':
-            generate_file(workflow_id,dag_contents['dag'])
-            payload['status']=dag__trigger(workflow_id,name,edit)
-        else:
-            payload['status']='failed'
-            payload['reason']=dag_contents
+        wms_type= data['wms_type']
+        wf_contents = get_workflow_OBC_rest(callback,name,edit,wms_type,workflow_id)
+        if wms_type == "dag":
+            dag_contents = wf_contents
+            if dag_contents['success']!='failed':
+                generate_dag_file(workflow_id,dag_contents['dag'])
+                payload['status']=dag__trigger(workflow_id,name,edit)
+            else:
+                payload['status']='failed'
+                payload['reason']=dag_contents
+        elif wms_type == "cwl":
+            cwl
+    # Create what to do if it is CWL
+    
+    
+    
     else:
         payload['status']="failed"
         payload['error']="Unknown type (worfkflow or tool)"
