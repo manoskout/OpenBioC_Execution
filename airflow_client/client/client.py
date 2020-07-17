@@ -114,13 +114,35 @@ def generate_dag_file(dag_id,instructions):
     filename,filename_path = create_filename(dag_id)
     
     if os.path.exists(filename_path):
-        print_f("This file exists")
+        print_f("DAG path exists")
         with open(filename_path,'w') as dag_file:
             dag_file.write(instructions)
     else:
         with open(filename_path,'w') as dag_file:
             dag_file.write(instructions)
-
+    dag_file.close()
+    
+def generate_cwl_dag_file(workflow_id,cwl_wf_path):
+    '''
+    Create a python file that contains the cwl workflow path
+    '''
+    contents=f'''
+#!/usr/bin/env python3
+from cwl_airflow.extensions.cwldag import CWLDAG
+dag = CWLDAG(
+    workflow=f"{cwl_wf_path}/workflow.cwl",
+    dag_id=f"{workflow_id}"
+    '''
+    filename,filename_path = create_filename(workflow_id)
+    if os.path.exists(filename_path):
+        print_f("CWL_AIRFLOW_DAG path exists")
+        with open(filename_path,'w') as cwl_dag_file:
+            cwl_dag_file.write(contents)
+    else:
+        with open(filename_path,'w') as cwl_dag_file:
+            cwl_dag_file.write(contents)
+    cwl_dag_file.close()
+    
 def delete_from_airflow(dag_name):
     '''
     Delete the dag from airflow Database
@@ -168,7 +190,6 @@ def delete_dag(dag_id):
     # delete_result['status']="deleted"
     # print_f(f"{"error" in result['error']}")
     if "error" in result:
-        print_f("Einai mesa")
         result["status"]="failed"
         result["dag_id"]=f"{dag_id}"
     else:
@@ -206,10 +227,10 @@ def get_workflow_OBC_rest(callback,wf_name, wf_edit,wf_type,workflow_id):
     Send GET request to OBC REST to get the dagfile
     RETURN dag File contents
     '''
+    dag_contents={}
     url = f'{callback}rest/workflows/{wf_name}/{wf_edit}/?type={wf_type}&workflow_id={workflow_id}'
     if wf_type=="airflow":
         response = requests.get(url)
-        dag_contents={}
     elif wf_type=="cwl":
         response = requests.get(url)
         # folder creation, unzip file into the dag folder 
@@ -234,6 +255,9 @@ def get_workflow_OBC_rest(callback,wf_name, wf_edit,wf_type,workflow_id):
         dag_contents=response.json()
     
     return dag_contents
+
+
+    
 
 
 def dag__trigger(id,name,edit):
@@ -334,18 +358,21 @@ def run_wf():
         wms_type= data['wms_type']
         wf_contents = get_workflow_OBC_rest(callback,name,edit,wms_type,workflow_id)
         if wms_type == "dag":
-            dag_contents = wf_contents
-            if dag_contents['success']!='failed':
-                generate_dag_file(workflow_id,dag_contents['dag'])
+            if wf_contents['success']!='failed':
+                generate_dag_file(workflow_id,wf_contents['dag'])
                 payload['status']=dag__trigger(workflow_id,name,edit)
             else:
                 payload['status']='failed'
-                payload['reason']=dag_contents
+                payload['reason']=wf_contents
         elif wms_type == "cwl":
-            cwl
-    # Create what to do if it is CWL
-    
-    
+            if wf_contents['success']!='failed':
+                cwl_wf_path=f"{os.environ['AIRFLOW_HOME']}/dags/cwl/{workflow_id}"
+                generate_cwl_dag_file(workflow_id,cwl_wf_path)
+                # TODO : SET THE JSON FOR INPUT PARAMETERS 
+                payload['status']=dag__trigger(workflow_id,name,edit)
+            else:
+                payload['status']='failed'
+                payload['reason']=wf_contents    
     
     else:
         payload['status']="failed"
