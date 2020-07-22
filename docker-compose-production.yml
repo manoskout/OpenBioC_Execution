@@ -25,7 +25,9 @@ services:
 
   airflowserver:
     # image: manoskoutoulakis/docker-obc-airflow:1.10.9
-    build: ./airflow_client
+    build: 
+      context: .
+      dockerfile: airflow.Dockerfile
     restart: always
     depends_on:
       - postgres
@@ -57,9 +59,9 @@ services:
       # Configuration File
       - ./airflow.cfg:/usr/local/airflow/airflow.cfg
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./airflow_client/client/templates:/usr/local/airflow/templates/
-      - ./airflow_client/client/static:/usr/local/airflow/static/
-      - ./airflow_client/client/client.py:/usr/local/airflow/client.py
+      - ./client/client/templates:/usr/local/airflow/templates/
+      - ./client/client/static:/usr/local/airflow/static/
+      - ./client/client/client.py:/usr/local/airflow/client.py
       # For custom plugins
       #- ./plugins:/usr/local/airflow/plugins
     ports:

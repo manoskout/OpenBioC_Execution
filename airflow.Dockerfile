@@ -89,8 +89,7 @@ RUN apt-get update -yqq \
         nodejs \
     && pip install cwl-airflow
 
-COPY script/entrypoint.sh /entrypoint.sh
-#COPY config/airflow.cfg ${AIRFLOW_USER_HOME}/airflow.cfg
+COPY client/airflow/script/entrypoint.sh /entrypoint.sh
 
 RUN chown -R airflow: ${AIRFLOW_USER_HOME}
 
@@ -112,11 +111,11 @@ RUN mkdir -m755 ${AIRFLOW_USER_HOME}/REPORTS/TOOL
 RUN mkdir -m755 ${AIRFLOW_USER_HOME}/REPORTS/DATA
 
 
-COPY /client/requirements.txt requirements.txt
+COPY client/client/requirements.txt requirements.txt
 RUN pip install -r requirements.txt
-COPY /client/static/ ${AIRFLOW_USER_HOME}/static
-COPY /client/templates/ ${AIRFLOW_USER_HOME}/templates
-COPY /client/client.py ${AIRFLOW_USER_HOME}/
+COPY client/client/static/ ${AIRFLOW_USER_HOME}/static
+COPY client/client/templates/ ${AIRFLOW_USER_HOME}/templates
+COPY client/client/client.py ${AIRFLOW_USER_HOME}/
 
 # Temporary sollution
 RUN mkdir -m755 ${AIRFLOW_USER_HOME}/logs
