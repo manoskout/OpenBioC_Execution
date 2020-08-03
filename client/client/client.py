@@ -223,18 +223,18 @@ def get_tool_OBC_rest(callback,tool_id, tl_name, tl_edit, tl_version,tl_type):
     return dag_contents
 
 
-def get_workflow_OBC_rest(callback,wf_name, wf_edit,wf_type,workflow_id):
+def get_workflow_OBC_rest(callback,workflow_name, workflow_edit,workflow_format,workflow_id):
     '''
     Send GET request to OBC REST to get the dagfile
+    https://openbio.eu/platform/rest/workflows/<workflow_name>/<workflow_edit>/?workflow_id=<workflow_id>&format=<format>
     RETURN dag File contents
     '''
     dag_contents={}
     #FIX FOR TESTS ONLY
-    url = f'{callback}rest/workflows/{wf_name}/{wf_edit}/?dag=true&workflow_id={workflow_id}'
-    # url = f'{callback}rest/workflows/{wf_name}/{wf_edit}/?type={wf_type}&workflow_id={workflow_id}'
-    if wf_type=="airflow":
+    url = f'{callback}rest/workflows/{workflow_name}/{workflow_edit}/?workflow_id={workflow_id}&format={workflow_format}'
+    if workflow_format=="airflow":
         response = requests.get(url)
-    elif wf_type=="cwl":
+    elif workflow_format=="cwlzip":
         response = requests.get(url)
         # folder creation, unzip file into the dag folder 
         cwl_zip_path= f"{os.environ['AIRFLOW_HOME']}/dags/cwl/{workflow_id}" 
@@ -337,12 +337,12 @@ def run_wf():
     d = request.get_data()
     data = json.loads(request.get_data())
 
-    name = data['name']
-    edit = data['edit']
-    work_type = data['type']
+    name = data['workflow_name']
+    edit = data['workflow_edit']
+    workflow_format = data['format']
     callback= data['callback']        
-
-    if work_type == 'tool':
+    # TOOL Not used
+    if workflow_format == 'tool':
         tool_id = data['tool_id']
         version = data['version']
         tool_type= data['tool_type']
@@ -357,35 +357,31 @@ def run_wf():
         except KeyError:
             print_f('Dag not found')
             payload=dag_contents
-    elif work_type == 'workflow':
+    if workflow_format == 'airflow':
         workflow_id = data['workflow_id']
-        # TODO : Change that only for tests 
-        wms_type= "airflow"
         # wms_type= data['wms_type']
-        wf_contents = get_workflow_OBC_rest(callback,name,edit,wms_type,workflow_id)
+        wf_contents = get_workflow_OBC_rest(callback,name,edit,workflow_format,workflow_id)
         
-        print(wms_type)
-        if wms_type == "airflow":
-            if wf_contents['success']!='failed':
-                generate_dag_file(workflow_id,wf_contents['dag'])
-                payload['status']=dag__trigger(workflow_id,name,edit, None)
+        if wf_contents['success']!='failed':
+            generate_dag_file(workflow_id,wf_contents['dag'])
+            payload['status']=dag__trigger(workflow_id,name,edit, None)
+        else:
+            payload['status']='failed'
+            payload['reason']=wf_contents
+    elif workflow_format = 'cwlzip'
+        if wf_contents['success']!='failed':
+            cwl_wf_path=f"{os.environ['AIRFLOW_HOME']}/dags/cwl/{workflow_id}"
+            generate_cwl_dag_file(workflow_id,cwl_wf_path)
+            # TODO : SET THE JSON FOR INPUT PARAMETERS,The JSON came from OpenBio
+            if wf_contents['input_parameters'] in wf_contents:
+                input_parameters = wf_contents['input_parameters']
+                payload['status']=dag__trigger(workflow_id,name,edit,input_parameters)
             else:
                 payload['status']='failed'
-                payload['reason']=wf_contents
-        elif wms_type == "cwl":
-            if wf_contents['success']!='failed':
-                cwl_wf_path=f"{os.environ['AIRFLOW_HOME']}/dags/cwl/{workflow_id}"
-                generate_cwl_dag_file(workflow_id,cwl_wf_path)
-                # TODO : SET THE JSON FOR INPUT PARAMETERS,The JSON came from OpenBio
-                if wf_contents['input_parameters'] in wf_contents:
-                    input_parameters = wf_contents['input_parameters']
-                    payload['status']=dag__trigger(workflow_id,name,edit,input_parameters)
-                else:
-                    payload['status']='failed'
-                    payload['reason']="The input parameters are not inserted into the request" 
-            else:
-                payload['status']='failed'
-                payload['reason']=wf_contents    
+                payload['reason']="The input parameters are not inserted into the request" 
+        else:
+            payload['status']='failed'
+            payload['reason']=wf_contents    
     
     else:
         payload['status']="failed"
