@@ -336,30 +336,29 @@ def run_wf():
     payload={} # Future changes for scheduling workflow
     d = request.get_data()
     data = json.loads(request.get_data())
-
+    # Must be changed from OPENBIO
     name = data['workflow_name']
     edit = data['workflow_edit']
     workflow_format = data['format']
     callback= data['callback']        
     # TOOL Not used
-    if workflow_format == 'tool':
-        tool_id = data['tool_id']
-        version = data['version']
-        tool_type= data['tool_type']
-        dag_contents= get_tool_OBC_rest(callback,tool_id, name,edit,version, tool_type)
-        try:
-            if dag_contents['success']!='failed':
-                generate_dag_file(tool_id,dag_contents['dag'])
-                payload['status']=dag__trigger(tool_id,name,edit, None)
-            else:
-                payload['status']='failed'
-                payload['reason']=dag_contents
-        except KeyError:
-            print_f('Dag not found')
-            payload=dag_contents
+    # if workflow_format == 'tool':
+    #     tool_id = data['tool_id']
+    #     version = data['version']
+    #     tool_type= data['tool_type']
+    #     dag_contents= get_tool_OBC_rest(callback,tool_id, name,edit,version, tool_type)
+    #     try:
+    #         if dag_contents['success']!='failed':
+    #             generate_dag_file(tool_id,dag_contents['dag'])
+    #             payload['status']=dag__trigger(tool_id,name,edit, None)
+    #         else:
+    #             payload['status']='failed'
+    #             payload['reason']=dag_contents
+    #     except KeyError:
+    #         print_f('Dag not found')
+    #         payload=dag_contents
     if workflow_format == 'airflow':
         workflow_id = data['workflow_id']
-        # wms_type= data['wms_type']
         wf_contents = get_workflow_OBC_rest(callback,name,edit,workflow_format,workflow_id)
         
         if wf_contents['success']!='failed':
@@ -368,12 +367,13 @@ def run_wf():
         else:
             payload['status']='failed'
             payload['reason']=wf_contents
-    elif workflow_format = 'cwlzip'
+    elif workflow_format == 'cwlzip':
         if wf_contents['success']!='failed':
             cwl_wf_path=f"{os.environ['AIRFLOW_HOME']}/dags/cwl/{workflow_id}"
             generate_cwl_dag_file(workflow_id,cwl_wf_path)
             # TODO : SET THE JSON FOR INPUT PARAMETERS,The JSON came from OpenBio
             if wf_contents['input_parameters'] in wf_contents:
+                # Must be changed how i get the input parameters
                 input_parameters = wf_contents['input_parameters']
                 payload['status']=dag__trigger(workflow_id,name,edit,input_parameters)
             else:
