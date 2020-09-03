@@ -231,10 +231,13 @@ def get_workflow_OBC_rest(callback,workflow_name, workflow_edit,workflow_format,
     '''
     dag_contents={}
     #FIX FOR TESTS ONLY
-    url = f'{callback}rest/workflows/{workflow_name}/{workflow_edit}/?workflow_id={workflow_id}&format={workflow_format}'
     if workflow_format=="airflow":
+        url = f'{callback}rest/workflows/{workflow_name}/{workflow_edit}/?workflow_id={workflow_id}&format={workflow_format}'
+        #We have to define the headers in order to take a json object of a workflow
+        headers= {'accept': 'application/json'}
         response = requests.get(url)
-    elif workflow_format=="cwlzip":
+    elif workflow_format=="cwl-airflow":
+        url = f'{callback}rest/workflows/{workflow_name}/{workflow_edit}/?workflow_id={workflow_id}&format=cwlzip'
         response = requests.get(url)
         # folder creation, unzip file into the dag folder 
         cwl_zip_path= f"{os.environ['AIRFLOW_HOME']}/dags/cwl/{workflow_id}" 
@@ -337,9 +340,9 @@ def run_wf():
     d = request.get_data()
     data = json.loads(request.get_data())
     # Must be changed from OPENBIO
-    name = data['workflow_name']
-    edit = data['workflow_edit']
-    workflow_format = data['format']
+    name = data['name']
+    edit = data['edit']
+    workflow_format = os.environ['WORKFLOW_FORMAT']
     callback= data['callback']        
     # TOOL Not used
     # if workflow_format == 'tool':
@@ -367,7 +370,7 @@ def run_wf():
         else:
             payload['status']='failed'
             payload['reason']=wf_contents
-    elif workflow_format == 'cwlzip':
+    elif workflow_format == 'cwl-airflow':
         if wf_contents['success']!='failed':
             cwl_wf_path=f"{os.environ['AIRFLOW_HOME']}/dags/cwl/{workflow_id}"
             generate_cwl_dag_file(workflow_id,cwl_wf_path)
