@@ -49,7 +49,7 @@ services:
       - OBC_EXECUTOR_PORT=${OBC_EXECUTOR_PORT}
       - OBC_AIRFLOW_PORT=${OBC_AIRFLOW_PORT}
       - EXECUTOR_DB_PORT=${EXECUTOR_DB_PORT}
-      - WORKFLOW_FORMAT=${WMS}
+      - WORKFLOW_FORMAT=${WORKFLOW_FORMAT}
     volumes:
       # Folder where airflow should store files
       - dagvolume:/usr/local/airflow/dags
