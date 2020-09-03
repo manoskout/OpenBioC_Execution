@@ -62,9 +62,10 @@ echo "[${YELLOW}-${NC}] State 3/3 (Setting up variables and installing the OpenB
 # wms = workflowmanagement system
 WMS_LIST=(cwl-airflow airflow)
 echo -e "[${LGREEN}-->${NC}] Select one of the Workflow Management Systems: "
-select WMS in ${WMS_LIST[@]}; do
+select option in ${WMS_LIST[@]}; do
 	if [ 1 -le "$REPLY" ] && [ "$REPLY" -le ${#WMS_LIST[@]} ]; then
-		echo echo "[${LGREEN}-${NC}] You have chosen $WMS"
+		echo "[${LGREEN}-${NC}] You have chosen $option"
+		export WMS=$option
 		break
 	else
 		echo "[${RED}-${NC}] Wrong selection: Select any number from 1 - ${#WMS_LIST[@]}"
@@ -104,7 +105,7 @@ wget -O ${OBC_EXECUTOR_PATH}/docker-compose.yml https://raw.githubusercontent.co
 # Config File only for airflow
 if [[ "$WMS" == *"airflow"* ]]; then
 	wget -O ${OBC_EXECUTOR_PATH}/airflow.cfg https://raw.githubusercontent.com/manoskout/OpenBioC_Execution/master/airflow.cfg
-
+fi
 
 
 # Set obc_executor_run.sh (Optional)
@@ -140,7 +141,7 @@ OBC_AIRFLOW_PORT=$(portfinder $OBC_AIRFLOW_PORT)
 NETDATA_MONITORING_PORT=$(portfinder $NETDATA_MONITORING_PORT)
 EXECUTOR_DB_PORT=$(portfinder $EXECUTOR_DB_PORT)
 NETDATA_ID=${NETDATA_ID}
-WORKFLOW_FORMAT=${WORKFLOW_FORMAT}
+WORKFLOW_FORMAT=${WMS}
 EOF
 
 #TODO -> change using docker-compose up -f asfsedfsdf.yml(FAILED)

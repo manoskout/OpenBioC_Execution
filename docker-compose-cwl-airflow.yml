@@ -22,7 +22,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - "${EXECUTOR_DB_PORT}:5432"
-    container_name: "${EXECUTOR_INSTANCE}-OBC-DB}"
+    container_name: "${EXECUTOR_INSTANCE}-OBC-DB"
 
   airflowserver:
     image: manoskoutoulakis/obc-cwl-airflow:1.10.9
@@ -69,7 +69,7 @@ services:
       interval: 15s
       timeout: 15s
       retries: 3
-    container_name: "${EXECUTOR_INSTANCE}-OBC-${WMS}"
+    container_name: "${EXECUTOR_INSTANCE}-OBC-${WORKFLOW_FORMAT}"
 volumes:
   # Dag volumes 
   dagvolume:
