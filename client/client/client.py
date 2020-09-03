@@ -371,6 +371,7 @@ def run_wf():
             payload['status']='failed'
             payload['reason']=wf_contents
     elif workflow_format == 'cwl-airflow':
+        wf_contents = get_workflow_OBC_rest(callback,name,edit,workflow_format,workflow_id)
         if wf_contents['success']!='failed':
             cwl_wf_path=f"{os.environ['AIRFLOW_HOME']}/dags/cwl/{workflow_id}"
             generate_cwl_dag_file(workflow_id,cwl_wf_path)
