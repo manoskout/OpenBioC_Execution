@@ -4,6 +4,7 @@ from flask import Flask, request, Response, redirect, jsonify, send_file, send_f
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 import json
+import yaml
 import os 
 from datetime import datetime
 import docker
@@ -131,9 +132,10 @@ def generate_cwl_dag_file(workflow_id,cwl_wf_path):
 #!/usr/bin/env python3
 from cwl_airflow.extensions.cwldag import CWLDAG
 dag = CWLDAG(
-    workflow=f"{cwl_wf_path}/workflow.cwl",
+    workflow="{cwl_wf_path}/workflow.cwl",
     dag_id=f"{workflow_id}"
-    '''
+)
+'''
     filename,filename_path = create_filename(workflow_id)
     if os.path.exists(filename_path):
         print_f("CWL_AIRFLOW_DAG path exists")
@@ -239,28 +241,61 @@ def get_workflow_OBC_rest(callback,workflow_name, workflow_edit,workflow_format,
     elif workflow_format=="cwl-airflow":
         url = f'{callback}rest/workflows/{workflow_name}/{workflow_edit}/?workflow_id={workflow_id}&format=cwlzip'
         response = requests.get(url)
+        print_f(url)
         # folder creation, unzip file into the dag folder 
-        cwl_zip_path= f"{os.environ['AIRFLOW_HOME']}/dags/cwl/{workflow_id}" 
+        cwl_zip_path= f"{os.environ['AIRFLOW_HOME']}/dags/cwl" 
         try: 
+            print_f(cwl_zip_path)
             os.mkdir(cwl_zip_path)
         except OSError:
-            print("Creation of the directory %s failed" % cwl_zip_path)
+            print(f"Creation of the directory {cwl_zip_path} failed. The directory already exists!")
         else:
             print("Successfully created the directory %s" % cwl_zip_path) 
         if response.status_code == 200:
-            with open("{cwl_zip_path}/{workflow_id}.zip", 'wb') as f:
+            # If everything from request is ok prepare all required configuration to make the workflow runnable to Airflow
+            os.mkdir(f"{cwl_zip_path}/{workflow_id}")
+            with open(f"{cwl_zip_path}/{workflow_id}/{workflow_id}.zip", 'wb') as f:
                 f.write(response.content)
-            with zipfile.ZipFile(f"{cwl_zip_path}/{workflow_id}.zip",'r') as zip_ref:
-                zip_ref.extractall(cwl_zip_path)
+            with zipfile.ZipFile(f"{cwl_zip_path}/{workflow_id}/{workflow_id}.zip",'r') as zip_ref:
+                zip_ref.extractall(f"{cwl_zip_path}/{workflow_id}")
+                # how to check if the extraction is succeeded
+            # get the inputs.yml 
+            dag_contents['input_parameters'] = get_the_inputs_of_cwl_wf(f"{cwl_zip_path}/{workflow_id}/inputs.yml")
     if response.status_code != 200:
         print_f(f"Error while retrieving data. ERROR_CODE : {response.status_code}")
-        dag_contents['success']='false'
+        dag_contents['success']='failed'
         dag_contents['error']=f"Error while retrieving data. ERROR_CODE : {response.status_code}"
     else:
         print_f("success")
-        dag_contents=response.json()
-    
+        dag_contents['success']='success'
+        #dag_contents=response.json()
     return dag_contents
+
+def get_the_inputs_of_cwl_wf(inputs_file_path):
+    """
+    It gets the inputs from the workflow folder and parse the YAML file to json
+    """
+    with open(inputs_file_path, 'r') as stream:
+        try:
+            loaded_inputs = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
+    # Shouldn't Exists
+    if loaded_inputs is None:
+        loaded_inputs={
+          "conf":
+          {"job":{
+              "OBC_TOOL_PATH": "/usr/local/airflow/REPORTS/TOOL",
+              "OBC_DATA_PATH": "/usr/local/airflow/REPORTS/DATA",
+              "OBC_WORK_PATH": "/usr/local/airflow/REPORTS/WORK",
+              "scale":1
+            }
+          }
+        }
+
+            
+
+    return loaded_inputs
 
 
     
@@ -344,6 +379,7 @@ def run_wf():
     edit = data['edit']
     workflow_format = os.environ['WORKFLOW_FORMAT']
     callback= data['callback']        
+    workflow_id = data['workflow_id']
     # TOOL Not used
     # if workflow_format == 'tool':
     #     tool_id = data['tool_id']
@@ -361,7 +397,6 @@ def run_wf():
     #         print_f('Dag not found')
     #         payload=dag_contents
     if workflow_format == 'airflow':
-        workflow_id = data['workflow_id']
         wf_contents = get_workflow_OBC_rest(callback,name,edit,workflow_format,workflow_id)
         
         if wf_contents['success']!='failed':
@@ -375,11 +410,10 @@ def run_wf():
         if wf_contents['success']!='failed':
             cwl_wf_path=f"{os.environ['AIRFLOW_HOME']}/dags/cwl/{workflow_id}"
             generate_cwl_dag_file(workflow_id,cwl_wf_path)
-            # TODO : SET THE JSON FOR INPUT PARAMETERS,The JSON came from OpenBio
-            if wf_contents['input_parameters'] in wf_contents:
+            if 'input_parameters' in wf_contents:
                 # Must be changed how i get the input parameters
-                input_parameters = wf_contents['input_parameters']
-                payload['status']=dag__trigger(workflow_id,name,edit,input_parameters)
+                print_f("wf_contents['input_parameters'] --- > works")
+                payload['status']=dag__trigger(workflow_id,name,edit,wf_contents['input_parameters'])
             else:
                 payload['status']='failed'
                 payload['reason']="The input parameters are not inserted into the request" 

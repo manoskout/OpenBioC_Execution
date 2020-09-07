@@ -16,7 +16,7 @@ ENV TERM linux
 ENV FLASK_APP client.py
 ENV FLASK_RUN_HOST 0.0.0.0
 # Airflow
-ARG AIRFLOW_VERSION=1.10.9
+ARG AIRFLOW_VERSION=1.10.10
 ARG AIRFLOW_USER_HOME=/usr/local/airflow
 ARG AIRFLOW_DEPS=""
 ARG PYTHON_DEPS=""
@@ -87,9 +87,11 @@ RUN apt-get update -yqq \
     && apt-get upgrade -yqq \
     && apt-get install -yqq --no-install-recommends \
         nodejs \
-    && pip install cwl-airflow
+    && pip install cwl-airflow==1.2.2
+#RUN pip install -U setuptools
+COPY client/airflow/script/entrypoint_cwl.sh /entrypoint_cwl.sh
 
-COPY client/airflow/script/entrypoint.sh /entrypoint.sh
+RUN pip install -U cwltool
 
 RUN chown -R airflow: ${AIRFLOW_USER_HOME}
 
@@ -121,5 +123,5 @@ COPY client/client/client.py ${AIRFLOW_USER_HOME}/
 RUN mkdir -m755 ${AIRFLOW_USER_HOME}/logs
 RUN mkdir -m755 ${AIRFLOW_USER_HOME}/logs/compressed_logs
 # RUN  -m777 ${AIRFLOW_USER_HOME}
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/entrypoint_cwl.sh"]
 CMD ["webserver"]
