@@ -65,9 +65,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       # For custom plugins
       #- ./plugins:/usr/local/airflow/plugins
-      - ./client/client/templates:/usr/local/airflow/templates/
-      - ./client/client/static:/usr/local/airflow/static/
-      - ./client/client/client.py:/usr/local/airflow/client.py
     ports:
       - "${OBC_AIRFLOW_PORT}:8080"
       - "${OBC_EXECUTOR_PORT}:5000"
