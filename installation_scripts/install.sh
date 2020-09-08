@@ -185,10 +185,11 @@ function portfinder (){
 	netstat -pant /dev/null 2>&1 | grep $1  > /dev/null 2>&1 
 	while [ $? -eq 0 ] ;
 	do
+		echo "Port -- $1 -- is already in use..."
 		set -- $(expr $1 + 1) $1
 		netstat -pant /dev/null 2>&1 | grep $1  > /dev/null 2>&1
 	done
-	echo $1
+	echo "Function found an available port --> $1"
 }
 # Environment variables that used from Executor
 cat >> ${OBC_EXECUTOR_PATH}/.env << EOF
