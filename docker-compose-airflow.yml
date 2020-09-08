@@ -47,7 +47,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - NETDATA_MONITORING_PORT=${NETDATA_MONITORING_PORT}
       - OBC_EXECUTOR_PORT=${OBC_EXECUTOR_PORT}
-      - OBC_AIRFLOW_PORT=${OBC_AIRFLOW_PORT}
+      - OBC_AIRFLOW_PORT=${OBC_WMS_PORT}
       - EXECUTOR_DB_PORT=${EXECUTOR_DB_PORT}
       - WORKFLOW_FORMAT=${WORKFLOW_FORMAT}
     volumes:
@@ -61,7 +61,7 @@ services:
       # For custom plugins
       #- ./plugins:/usr/local/airflow/plugins
     ports:
-      - "${OBC_AIRFLOW_PORT}:8080"
+      - "${OBC_WMS_PORT}:8080"
       - "${OBC_EXECUTOR_PORT}:5000"
     command: webserver
     healthcheck:
