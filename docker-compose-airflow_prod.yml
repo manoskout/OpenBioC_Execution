@@ -25,7 +25,10 @@ services:
     container_name: "${EXECUTOR_INSTANCE}-OBC-DB"
 
   airflowserver:
-    image: manoskoutoulakis/obc-airflow:1.10.9
+    build: 
+      context: .
+      dockerfile: airflow.Dockerfile
+    #image: manoskoutoulakis/obc-airflow:1.10.9
     restart: always
     depends_on:
       - postgres
@@ -60,6 +63,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       # For custom plugins
       #- ./plugins:/usr/local/airflow/plugins
+      - ./client/client/client.py:/usr/local/airflow/client.py
     ports:
       - "${OBC_WMS_PORT}:8080"
       - "${OBC_EXECUTOR_PORT}:5000"

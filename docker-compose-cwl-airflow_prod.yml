@@ -5,7 +5,7 @@ services:
     environment:
       - ID=${NETDATA_ID}
     ports:
-      - 19998:19998
+      - 19997:19998
     volumes:
       - /etc/passwd:/host/etc/passwd:ro
       - /etc/group:/host/etc/group:ro
@@ -25,7 +25,10 @@ services:
     container_name: "${EXECUTOR_INSTANCE}-OBC-DB"
 
   airflowserver:
-    image: manoskoutoulakis/obc-airflow:1.10.9
+    #image: manoskoutoulakis/obc-cwl-airflow:1.10.9
+    build:
+      context: .
+      dockerfile: cwl_airflow.Dockerfile
     restart: always
     depends_on:
       - postgres
@@ -37,6 +40,7 @@ services:
       - LOAD_EX=n
       - EXECUTOR=Local
       - FERNET_KEY=jsDPRErfv8Z_eVTnGfF8ywd19j4pyqE3NpdUBA_oRTo=
+      - FLASK_ENV=development
       #OBC Client environment variables
       - NETDATA_ID=${NETDATA_ID}
       - OBC_USER_ID=${OBC_USER_ID}
@@ -50,11 +54,12 @@ services:
       - OBC_AIRFLOW_PORT=${OBC_WMS_PORT}
       - EXECUTOR_DB_PORT=${EXECUTOR_DB_PORT}
       - WORKFLOW_FORMAT=${WORKFLOW_FORMAT}
+
     volumes:
       # Folder where airflow should store files
-      - dagairflowvolume:/usr/local/airflow/dags
-      - logairflowvolume:/usr/local/airflow/logs
-      - reportairflowvolume:/usr/local/airflow/REPORTS
+      - dagvolume:/usr/local/airflow/dags
+      - logvolume:/usr/local/airflow/logs
+      - reportvolume:/usr/local/airflow/REPORTS
       # Configuration File
       - ./airflow.cfg:/usr/local/airflow/airflow.cfg
       - /var/run/docker.sock:/var/run/docker.sock
@@ -69,14 +74,9 @@ services:
       interval: 15s
       timeout: 15s
       retries: 3
-    container_name: "${EXECUTOR_INSTANCE}-OBC-${WMS}"
+    container_name: "${EXECUTOR_INSTANCE}-OBC-${WORKFLOW_FORMAT}"
 volumes:
   # Dag volumes 
-  dagairflowvolume:
-  logairflowvolume:
-  reportairflowvolume:  
-  
-
-
-
-
+  dagvolume:
+  logvolume:
+  reportvolume:  
