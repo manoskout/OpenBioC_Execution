@@ -189,7 +189,7 @@ function portfinder (){
 		set -- $(expr $1 + 1) $1
 		netstat -pant /dev/null 2>&1 | grep $1  > /dev/null 2>&1
 	done
-	echo "Function found an available port --> $1"
+	echo "$1"
 }
 # Environment variables that used from Executor
 cat >> ${OBC_EXECUTOR_PATH}/.env << EOF
