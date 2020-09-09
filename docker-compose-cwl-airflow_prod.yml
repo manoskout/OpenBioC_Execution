@@ -5,7 +5,7 @@ services:
     environment:
       - ID=${NETDATA_ID}
     ports:
-      - 19997:19998
+      - ${NETDATA_MONITORING_PORT}:19998
     volumes:
       - /etc/passwd:/host/etc/passwd:ro
       - /etc/group:/host/etc/group:ro

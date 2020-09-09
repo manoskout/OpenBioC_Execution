@@ -1,49 +1,65 @@
 #!/bin/bash
+
 # filename: install.sh
 # author: @koutoulakis
+#SETTING COLORS FOR OUTPUTS
 
-# This bashscript work only on debian based distros
-#
-# This script will:
-# 1. Check all client dependencies
-#	- docker
-#	- docker-compose
-# 2. Generate unique Executor_Id
-#	- user should select what execution environment prefer 
-# 3. Customize variables for OpenBioC server
+WHITE='\e[97m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+LGREEN='\033[1;32m'
 
 showHelp() {
 # `cat << EOF` This means that cat should stop reading when EOF is detected
 cat << EOF  
-Usage: ./install
 Install OpenBio Execution Environment
 
--h, -help,  --help                  		Display help
+-h --help                  : Display help
 
--n, -name,  --name                  		Set the name of the execution environment
+-e --execution-environment : Specify the type of execution engine.
+                             Available options: airflow, cwl-airflow 
 
--e, -exec, 	--execution-engine 				Specify the execution engine (available airflow, cwl-airflow)
+-d  --execution-env-dir         : Directory of docker compose files and configurations. Default : /home/${USER}
 
--p, -ports, --ports                			Specify the ports that the Execution Environment run. 
-(
-	1. Workflow Management System Port
-	2. Obc API Port
-	3. Database Port
-	4. Resource Monitoring Port
-)
+-W --workflow-port         : Workflow Management System Port. Default: 8080
 
+-O --api-port              : OpenBio API Port. Default: 5000
+
+-D --database-port         : Database Port. Default: 5432
+
+-R --resource-port         : Resource Monitoring Port. Default: 19998
 
 EOF
 # EOF is found above and hence cat command stops reading. This is equivalent to echo but much neater when printing out.
 }
 
 
+wmsError() {
+cat << EOF
+Unrecognized type of execution engine - $1
+-e  --execution-environment : Specify the type of execution engine.
+                              Available options: airflow, cwl-airflow 
+EOF
+exit 1
+}
+
+portcheck (){
+	# Check the port if it is in use
+	netstat -pant /dev/null 2>&1 | grep -w $1  > /dev/null 2>&1 
+	if [ $? -eq 0 ] ; then
+		echo -e "${RED}PORT-ERROR${NC}:  $2 $1 is already in use, Please retry again with different port!"
+		exit 1
+	fi	
+}
+
 # $@ is all command line parameters passed to the script.
 # -o is for short options like -v
 # -l is for long options with double dash like --version
 # the comma separates different long options
 # -a is for long options with single dash like -version
-options=$(getopt -l "help,exec:,ports:," -o "he:p:" -a -- "$@")
+options=$(getopt -l "help,execution-environment:,execution-env-dir:,workflow-port:,api-port:,database-port:,resource-port:" -o "he:d:W:O:D:R: " -a -- "$@")
 
 # set --:
 # If no arguments follow this option, then the positional parameters are unset. Otherwise, the positional parameters 
@@ -52,37 +68,46 @@ eval set -- "$options"
 
 while true
 do
-case $1 in
--h|--help) 
-    showHelp
-    exit 0
-    ;;
--e|--exec) 
-    shift
-    export WMS=$1
-    ;;
--p|--ports)
-    export OBC_WMS_PORT=$2
-    export OBC_EXECUTOR_PORT=$4
-    export EXECUTOR_DB_PORT=$5
-    export NETDATA_MONITORING_PORT=$6
-    ;;
---)
-    
-    break;;
-esac
-shift
+    case $1 in
+    -h|--help)  
+        showHelp
+        exit 0
+        ;;
+    -e|--exec) 
+        export WMS=$2; shift 2;;
+    -d|--execution-env-dir)
+		export ENVIRONMENT_PATH=$2; shift 2;; #OBC_EXECUTOR_PATH
+    -W|--workflow-port)
+        export WMS_PORT=$2; shift 2;;
+    -O|--api-port)
+        export API_PORT=$2; shift 2;;
+    -D|--database-port)
+        export DB_PORT=$2; shift 2;;
+    -R|--resource-port)
+        export RESOURCE_PORT=$2; shift 2;;
+    --) shift; break ;;
+    *) break ;;
+        
+    esac
 done
 
-# Check if docker exist in your environment
+echo "$WMS_PORT $API_PORT $DB_PORT $RESOURCE_PORT"
+#  Check if the specifies workflow engine is one of the selectionss
+[ "$WMS" == "cwl-airflow" ] || [ "$WMS" == "airflow" ] && echo "Selected Worfkflow Engine : $WMS" || wmsError $WMS
 
-#SETTING COLORS FOR OUTPUTS
-WHITE='\e[97m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
-YELLOW='\033[1;33m'
-GREEN='\033[0;32m'
-LGREEN='\033[1;32m'
+[ -z "$ENVIRONMENT_PATH" ] && echo "Set the default directory /home/${USER}/" && export ENVIRONMENT_PATH="/home/${USER}"
+#  Set the default variables to 
+[ -z "$WMS_PORT" ] && echo "WMS Port is not setted. Set the default port 8080" && export WMS_PORT=8080
+[ -z "$API_PORT" ] && echo "API Port port is not setted. Set the default port 5000" && export API_PORT=5000
+[ -z "$DB_PORT" ] && echo "Database Port is not setted. Set the default port 5432" && export DB_PORT=5432
+[ -z "$RESOURCE_PORT" ] && echo "Resource Monitoring port is not setted. Set the default port 19998" && export RESOURCE_PORT=19998
+
+# Check the ports using the portcheck function 
+portcheck $WMS_PORT "WMS_PORT" && portcheck $API_PORT "API_PORT" && portcheck $DB_PORT "DB_PORT" && portcheck $RESOURCE_PORT "RESOURCE_PORT"
+
+
+
+# Check if docker exist in your environment
 
 export DISTRO_ID=$(lsb_release -i -s)
 
@@ -116,43 +141,20 @@ if [ $? -ne 0 ] ; then
 	echo -e "[${YELLOW}-${NC}] Docker-Compose is not installed, please install docker-compose before your Execution Environment installation."
 	echo -e "${WHITE}***You could use the commands below to install the Docker Engine***${NC}\n${YELLOW}
 	$ sudo curl -L \"https://github.com/docker/compose/releases/download/1.25.4/docker-compose-$(uname -s)-$(uname -m)\" -o /usr/local/bin/docker-compose
-	$sudo chmod +x /usr/local/bin/docker-compose
+	$ sudo chmod +x /usr/local/bin/docker-compose
 	${NC}
 	"	
 fi
 
 echo -e "[${YELLOW}-${NC}] State 3/3 (Setting up variables and installing the OpenBio Executor) "
 
-# Select which of the Workflow management system will be used
-# wms = workflowmanagement system
-# WMS_LIST=(cwl-airflow airflow)
-# echo -e "[${LGREEN}-->${NC}] Select one of the following Workflow Management Systems: "
-# select option in ${WMS_LIST[@]}; do
-# 	if [ 1 -le "$REPLY" ] && [ "$REPLY" -le ${#WMS_LIST[@]} ]; then
-# 		echo -e "[${LGREEN}-${NC}] You have chosen $option"
-# 		export WMS=$option
-# 		break
-# 	else
-# 		echo -e "[${RED}-${NC}] Wrong selection: Select any number from 1 - ${#WMS_LIST[@]}"
-# 	fi
-# done
-# Set user input for executor name, if the input is empty take default value ("main")
-# echo -e "[${YELLOW}-->${NC}] Enter your executor name:" 
-# read -e EXECUTOR_INSTANCE
-# if [ -z $EXECUTOR_INSTANCE ]; then 
-# 	export EXECUTOR_INSTANCE="main"
-# 	echo -e "[${YELLOW}-${NC}] Executor name is unset, take default value: main"; 
-# else 
-# 	echo -e "[${YELLOW}-${NC}] Executor name is set : '$EXECUTOR_INSTANCE'"; 
-# fi
-
 #  Create a unique string as a executor name
 export EXECUTOR_INSTANCE=$(cat /dev/urandom | tr -dc 'a-z' | fold -w 6 | head -n 1)
 # Set OBC_EXECUTOR PATH
-export OBC_EXECUTOR_PATH="/home/${USER}/obc_executor_${EXECUTOR_INSTANCE}"
+export WHOLE_ENV_PATH="$ENVIRONMENT_PATH/obc_$EXECUTOR_INSTANCE"
 
-echo "[${YELLOW}-${NC}] Set your installation path for your environment: ${OBC_EXECUTOR_PATH}" 
-mkdir -p ${OBC_EXECUTOR_PATH}
+echo -e "[${YELLOW}-${NC}] Installation path for the Execution Environment: ${WHOLE_ENV_PATH}" 
+mkdir -p ${WHOLE_ENV_PATH}
 export OBC_USER_ID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
 
 export NETDATA_ID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
@@ -163,58 +165,47 @@ echo -e "[${YELLOW}-${NC}] Client ID for OpenBioC Server : \033[38;2;0;255;0m${O
 export PUBLIC_IP=$(curl http://ip4.me 2>/dev/null | sed -e 's#<[^>]*>##g' | grep '^[0-9]')
 
 # File contains images
-wget -O ${OBC_EXECUTOR_PATH}/docker-compose.yml https://raw.githubusercontent.com/manoskout/OpenBioC_Execution/master/docker-compose-${WMS}.yml
+wget -O ${WHOLE_ENV_PATH}/docker-compose.yml https://raw.githubusercontent.com/manoskout/OpenBioC_Execution/master/docker-compose-${WMS}.yml
 # Config File only for airflow
 if [[ "$WMS" == *"airflow"* ]]; then
-	wget -O ${OBC_EXECUTOR_PATH}/airflow.cfg https://raw.githubusercontent.com/manoskout/OpenBioC_Execution/master/airflow.cfg
+	wget -O ${WHOLE_ENV_PATH}/airflow.cfg https://raw.githubusercontent.com/manoskout/OpenBioC_Execution/master/airflow.cfg
 fi
 
+echo "aaa -> $(pwd)"
 
 # Set obc_executor_run.sh (Optional)
 # wget https://raw.githubusercontent.com/manoskout/docker-airflow/master/obc_executor_run.sh
 echo -e "[${YELLOW}-${NC}] Running Directory : $(pwd)"
+echo "aaa -> $(pwd)"
 
-# Check if the pre-defined ports are in use 
-# export OBC_AIRFLOW_PORT=8080
-# export OBC_EXECUTOR_PORT=5000
-# export EXECUTOR_DB_PORT=5432
-# export NETDATA_MONITORING_PORT=19998
 
-# Check port that service could starts running
-function portfinder (){
-	netstat -pant /dev/null 2>&1 | grep $1  > /dev/null 2>&1 
-	while [ $? -eq 0 ] ;
-	do
-		echo "Port -- $1 -- is already in use..."
-		set -- $(expr $1 + 1) $1
-		netstat -pant /dev/null 2>&1 | grep $1  > /dev/null 2>&1
-	done
-	echo "$1"
-}
 # Environment variables that used from Executor
-cat >> ${OBC_EXECUTOR_PATH}/.env << EOF
+cat >> ${WHOLE_ENV_PATH}/.env << EOF
 EXECUTOR_INSTANCE=${EXECUTOR_INSTANCE}
 POSTGRES_USER=airflow
 POSTGRES_PASSWORD=airflow
 POSTGRES_DB=airflow
 OBC_USER_ID=${OBC_USER_ID}
 PUBLIC_IP=${PUBLIC_IP}
-OBC_EXECUTOR_PORT=$(portfinder $OBC_EXECUTOR_PORT)
-OBC_WMS_PORT=$(portfinder $OBC_WMS_PORT)
-NETDATA_MONITORING_PORT=$(portfinder $NETDATA_MONITORING_PORT)
-EXECUTOR_DB_PORT=$(portfinder $EXECUTOR_DB_PORT)
+OBC_EXECUTOR_PORT=${API_PORT}
+OBC_WMS_PORT=${WMS_PORT}
+NETDATA_MONITORING_PORT=${RESOURCE_PORT}
+EXECUTOR_DB_PORT=${DB_PORT}
 NETDATA_ID=${NETDATA_ID}
 WORKFLOW_FORMAT=${WMS}
 EOF
 
 #TODO -> change using docker-compose up -f asfsedfsdf.yml(FAILED)
-cd ${OBC_EXECUTOR_PATH}
-docker-compose up -d
+echo "aaa -> $(pwd)"
+
+cd $WHOLE_ENV_PATH
+echo "aaa -> $(pwd)"
+docker-compose up --build -d
 
 if [ $? -eq 0 ] ; then 
 
-	export OBC_EXECUTOR_URL="http://${PUBLIC_IP}:${OBC_EXECUTOR_PORT}/${OBC_USER_ID}"
-	export NETDATA_URL="http://${PUBLIC_IP}:${NETDATA_MONITORING_PORT}/${NETDATA_ID}"
+	export OBC_EXECUTOR_URL="http://${PUBLIC_IP}:${API_PORT}/${OBC_USER_ID}"
+	export NETDATA_URL="http://${PUBLIC_IP}:${RESOURCE_PORT}/${NETDATA_ID}"
 	echo -e "${GREEN}\n\n\n Successful installation \n\n\nClose tests ....\n\n${NC}"
     docker-compose down
 	echo -e "${YELLOW}**IMPORTANT**${NC}"
@@ -224,10 +215,10 @@ if [ $? -eq 0 ] ; then
 
 	echo -e "${YELLOW}***IMPORTANT***${NC}\n${YELLOW}
 	1)Before being able to run workflows you need to start the execution environment with the following commands:${NC}
-		$ cd ${OBC_EXECUTOR_PATH}
+		$ cd ${WHOLE_ENV_PATH}
 		$ docker-compose up \n
 	2)To stop the execution environment run:
-		$ cd ${OBC_EXECUTOR_PATH}
+		$ cd ${WHOLE_ENV_PATH}
 		$ docker-compose down
 	${NC}
 	"
