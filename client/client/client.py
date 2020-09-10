@@ -237,15 +237,16 @@ def get_workflow_OBC_rest(callback,workflow_name, workflow_edit,workflow_format,
         url = f'{callback}rest/workflows/{workflow_name}/{workflow_edit}/?workflow_id={workflow_id}&format={workflow_format}'
         #We have to define the headers in order to take a json object of a workflow
         headers= {'accept': 'application/json'}
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
+        
     elif workflow_format=="cwl-airflow":
         url = f'{callback}rest/workflows/{workflow_name}/{workflow_edit}/?workflow_id={workflow_id}&format=cwlzip'
         response = requests.get(url)
-        print_f(url)
+        # print_f(url)
         # folder creation, unzip file into the dag folder 
         cwl_zip_path= f"{os.environ['AIRFLOW_HOME']}/dags/cwl" 
+        # Create cwl folder containing the workflows
         try: 
-            print_f(cwl_zip_path)
             os.mkdir(cwl_zip_path)
         except OSError:
             print(f"Creation of the directory {cwl_zip_path} failed. The directory already exists!")
@@ -261,12 +262,17 @@ def get_workflow_OBC_rest(callback,workflow_name, workflow_edit,workflow_format,
                 # how to check if the extraction is succeeded
             # get the inputs.yml 
             dag_contents['input_parameters'] = get_the_inputs_of_cwl_wf(f"{cwl_zip_path}/{workflow_id}/inputs.yml")
+        else: 
+            dag_contents['success']='failed'
+            dag_contents['error']=f"Error while retrieving data. ERROR_CODE : {response.status_code}"
+            return dag_contents
+
     if response.status_code != 200:
         print_f(f"Error while retrieving data. ERROR_CODE : {response.status_code}")
         dag_contents['success']='failed'
         dag_contents['error']=f"Error while retrieving data. ERROR_CODE : {response.status_code}"
     else:
-        print_f("success")
+        dag_contents=response.json()
         dag_contents['success']='success'
         #dag_contents=response.json()
     return dag_contents
@@ -292,8 +298,6 @@ def get_the_inputs_of_cwl_wf(inputs_file_path):
             }
           }
         }
-
-            
 
     return loaded_inputs
 
@@ -331,17 +335,17 @@ def dag__trigger(id,name,edit,configuration_data):
     effort = 0
     while True:
         effort += 1
-        print_f (f'Effort: {effort}')
+        # print_f (f'Effort: {effort}')
         response = requests.post(url,data=json.dumps(data),headers=headers)
-        print_f(f"{response.ok}")
+        # print_f(f"{response.ok}")
         if response.ok == False:
-            print_f (f'Response error:{response.status_code}')
+            # print_f (f'Response error:{response.status_code}')
             print_f (f'{json.dumps(response.json(), indent=4)}')
             time.sleep(1)
         else:
             break
-    print_f("---> Response from airflow : ")
-    print_f(response.json())
+    # print_f("---> Response from airflow : ")
+    # print_f(response.json())
     return response.json()
 
 
@@ -398,9 +402,8 @@ def run_wf():
     #         payload=dag_contents
     if workflow_format == 'airflow':
         wf_contents = get_workflow_OBC_rest(callback,name,edit,workflow_format,workflow_id)
-        
         if wf_contents['success']!='failed':
-            generate_dag_file(workflow_id,wf_contents['dag'])
+            generate_dag_file(workflow_id,wf_contents['workflow'])
             payload['status']=dag__trigger(workflow_id,name,edit, None)
         else:
             payload['status']='failed'
@@ -412,7 +415,6 @@ def run_wf():
             generate_cwl_dag_file(workflow_id,cwl_wf_path)
             if 'input_parameters' in wf_contents:
                 # Must be changed how i get the input parameters
-                print_f("wf_contents['input_parameters'] --- > works")
                 payload['status']=dag__trigger(workflow_id,name,edit,wf_contents['input_parameters'])
             else:
                 payload['status']='failed'
@@ -453,8 +455,6 @@ def get_status_of_workflow(dag_id):
 
     response = requests.get(url)
 
-    
-
     # Check from database if the dag is changed! If it is ch
     paused_dags = [reg[0] for reg in execute_query("SELECT dag_id FROM dag WHERE is_paused").fetchall()]
     print_f(f"Paused dags : {paused_dags}")
@@ -463,10 +463,9 @@ def get_status_of_workflow(dag_id):
         if dag_id in paused_dags:
             for dag in res:
                 dag["state"]='paused'
-
-        print_f(response.json())
+        # print_f(response.json())
     else:
-        print_f("DAG NOT FOUND")
+        # print_f("DAG NOT FOUND")
         res=[]    
     return json.dumps(res)
 
@@ -538,7 +537,7 @@ def get_executor_id():
     To fix this problem we connect docker socket in executor container and we get the id of specific airflow container
     '''
     client=docker_setups()
-    executor_name= f"executor_airflow_{os.environ['EXECUTOR_INSTANCE']}"
+    executor_name= f"{os.environ['EXECUTOR_INSTANCE']}-OBC-{os.environ['WORKFLOW_FORMAT']}"
     return executor_name,client.containers.get(executor_name).id[0:12]
 
 
@@ -572,6 +571,7 @@ def monitoring_dashboard():
 def dags_data():
     '''
     Get real time data relative of dags status (Every 10 sec)
+    USELESS
     '''
     def get_dag_data():
         while True:

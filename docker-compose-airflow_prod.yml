@@ -40,6 +40,7 @@ services:
       - LOAD_EX=n
       - EXECUTOR=Local
       - FERNET_KEY=jsDPRErfv8Z_eVTnGfF8ywd19j4pyqE3NpdUBA_oRTo=
+      - FLASK_ENV=development
       #OBC Client environment variables
       - NETDATA_ID=${NETDATA_ID}
       - OBC_USER_ID=${OBC_USER_ID}
@@ -73,14 +74,9 @@ services:
       interval: 15s
       timeout: 15s
       retries: 3
-    container_name: "${EXECUTOR_INSTANCE}-OBC-${WMS}"
+    container_name: "${EXECUTOR_INSTANCE}-OBC-${WORKFLOW_FORMAT}"
 volumes:
   # Dag volumes 
   dagairflowvolume:
   logairflowvolume:
   reportairflowvolume:  
-  
-
-
-
-
