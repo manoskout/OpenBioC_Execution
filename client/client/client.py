@@ -238,13 +238,15 @@ def get_workflow_OBC_rest(callback,workflow_name, workflow_edit,workflow_format,
         #We have to define the headers in order to take a json object of a workflow
         headers= {'accept': 'application/json'}
         response = requests.get(url, headers=headers)
-        
+        dag_contents=response.json()
+ 
     elif workflow_format=="cwl-airflow":
         url = f'{callback}rest/workflows/{workflow_name}/{workflow_edit}/?workflow_id={workflow_id}&format=cwlzip'
         response = requests.get(url)
         # print_f(url)
         # folder creation, unzip file into the dag folder 
         cwl_zip_path= f"{os.environ['AIRFLOW_HOME']}/dags/cwl" 
+        print_f("--------------- I AM IN ---------------------")
         # Create cwl folder containing the workflows
         try: 
             os.mkdir(cwl_zip_path)
@@ -261,7 +263,9 @@ def get_workflow_OBC_rest(callback,workflow_name, workflow_edit,workflow_format,
                 zip_ref.extractall(f"{cwl_zip_path}/{workflow_id}")
                 # how to check if the extraction is succeeded
             # get the inputs.yml 
+            dag_contents['success']='success'
             dag_contents['input_parameters'] = get_the_inputs_of_cwl_wf(f"{cwl_zip_path}/{workflow_id}/inputs.yml")
+            return dag_contents
         else: 
             dag_contents['success']='failed'
             dag_contents['error']=f"Error while retrieving data. ERROR_CODE : {response.status_code}"
@@ -272,7 +276,6 @@ def get_workflow_OBC_rest(callback,workflow_name, workflow_edit,workflow_format,
         dag_contents['success']='failed'
         dag_contents['error']=f"Error while retrieving data. ERROR_CODE : {response.status_code}"
     else:
-        dag_contents=response.json()
         dag_contents['success']='success'
         #dag_contents=response.json()
     return dag_contents

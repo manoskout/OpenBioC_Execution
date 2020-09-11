@@ -55,9 +55,9 @@ services:
       - WORKFLOW_FORMAT=${WORKFLOW_FORMAT}
     volumes:
       # Folder where airflow should store files
-      - dagvolume:/usr/local/airflow/dags
-      - logvolume:/usr/local/airflow/logs
-      - reportvolume:/usr/local/airflow/REPORTS
+      - dagcwlairflowvolume:/usr/local/airflow/dags
+      - logcwlairflowvolume:/usr/local/airflow/logs
+      - reportcwlairflowvolume:/usr/local/airflow/REPORTS
       # Configuration File
       - ./airflow.cfg:/usr/local/airflow/airflow.cfg
       - /var/run/docker.sock:/var/run/docker.sock
