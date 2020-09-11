@@ -537,7 +537,7 @@ def get_executor_id():
     To fix this problem we connect docker socket in executor container and we get the id of specific airflow container
     '''
     client=docker_setups()
-    executor_name= f"{os.environ['EXECUTOR_INSTANCE']}-OBC-{os.environ['WORKFLOW_FORMAT']}"
+    executor_name= f"{os.environ['EXECUTOR_INSTANCE']}-OBC-Resource-Monitoring"
     return executor_name,client.containers.get(executor_name).id[0:12]
 
 
