@@ -15,7 +15,7 @@ TRY_LOOP="20"
 # Not to be there (only for testing)
 export AIRFLOW__CWL__TMP_FOLDER=/usr/local/airflow/tmp
 export AIRFLOW__CWL__OUTPUTS_FOLDER=/usr/local/airflow/cwl_outputs_folder
-export AIRFLOW__CWL__INPUTS_FOLDER:=usr/local/airflow/cwl_inputs_folder
+export AIRFLOW__CWL__INPUTS_FOLDER=usr/local/airflow/cwl_inputs_folder
 export AIRFLOW__CWL__SKIP_SCHEMAS=False
 export AIRFLOW__CWL__QUIET=False
 export AIRFLOW__CWL__STRICT=False

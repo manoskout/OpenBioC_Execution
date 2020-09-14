@@ -25,7 +25,7 @@ services:
     container_name: "${EXECUTOR_INSTANCE}-OBC-DB"
 
   airflowserver:
-    image: manoskoutoulakis/obc-airflow:1.10.9
+    image: manoskoutoulakis/obc-airflow:1.10.10
     restart: always
     depends_on:
       - postgres
@@ -52,9 +52,9 @@ services:
       - WORKFLOW_FORMAT=${WORKFLOW_FORMAT}
     volumes:
       # Folder where airflow should store files
-      - dagairflowvolume:/usr/local/airflow/dags
-      - logairflowvolume:/usr/local/airflow/logs
-      - reportairflowvolume:/usr/local/airflow/REPORTS
+      - dagvolume:/usr/local/airflow/dags
+      - logvolume:/usr/local/airflow/logs
+      - reportvolume:/usr/local/airflow/REPORTS
       # Configuration File
       - ./airflow.cfg:/usr/local/airflow/airflow.cfg
       - /var/run/docker.sock:/var/run/docker.sock

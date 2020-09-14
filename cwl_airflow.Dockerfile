@@ -88,7 +88,6 @@ RUN apt-get update -yqq \
     && apt-get install -yqq --no-install-recommends \
         nodejs \
     && pip install cwl-airflow==1.2.2
-#RUN pip install -U setuptools
 COPY client/airflow/script/entrypoint_cwl.sh /entrypoint_cwl.sh
 
 RUN pip install -U cwltool
