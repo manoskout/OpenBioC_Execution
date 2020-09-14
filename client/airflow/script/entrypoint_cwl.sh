@@ -58,7 +58,7 @@ if [ "$AIRFLOW__CORE__EXECUTOR" != "SequentialExecutor" ]; then
   if [ -z "$AIRFLOW__CORE__SQL_ALCHEMY_CONN" ]; then
     # Default values corresponding to the default compose files
     : "${POSTGRES_HOST:="postgres"}"
-    : "${POSTGRES_PORT:="5432"}"
+    : "${POSTGRES_PORT:="$EXECUTOR_DB_PORT"}"
     : "${POSTGRES_USER:="airflow"}"
     : "${POSTGRES_PASSWORD:="airflow"}"
     : "${POSTGRES_DB:="airflow"}"

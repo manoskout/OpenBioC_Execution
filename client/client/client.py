@@ -236,6 +236,7 @@ def get_workflow_OBC_rest(callback,workflow_name, workflow_edit,workflow_format,
     if workflow_format=="airflow":
         url = f'{callback}rest/workflows/{workflow_name}/{workflow_edit}/?workflow_id={workflow_id}&format={workflow_format}'
         #We have to define the headers in order to take a json object of a workflow
+        print_f(url)
         headers= {'accept': 'application/json'}
         response = requests.get(url, headers=headers)
         dag_contents=response.json()
@@ -325,7 +326,7 @@ def dag__trigger(id,name,edit,configuration_data):
     which communicate both airflow and OBC_client
     '''
     ret = {}
-    url = f"http://{os.environ['PUBLIC_IP']}:8080/{os.environ['OBC_USER_ID']}/api/experimental/dags/{id}/dag_runs"
+    url = f"http://{os.environ['PUBLIC_IP']}:{os.environ['OBC_AIRFLOW_PORT']}/{os.environ['OBC_USER_ID']}/api/experimental/dags/{id}/dag_runs"
     headers = {
         "Content-Type": "application/json",
         "Cache-Control": "no-cache"
@@ -340,10 +341,11 @@ def dag__trigger(id,name,edit,configuration_data):
         effort += 1
         # print_f (f'Effort: {effort}')
         response = requests.post(url,data=json.dumps(data),headers=headers)
+        print_f(f"--->>>{url}")
         # print_f(f"{response.ok}")
         if response.ok == False:
-            # print_f (f'Response error:{response.status_code}')
-            print_f (f'{json.dumps(response.json(), indent=4)}')
+            print_f (f'Response error:{response.status_code}')
+            # print_f (f'{json.dumps(response.json(), indent=4)}')
             time.sleep(1)
         else:
             break
@@ -450,7 +452,7 @@ def get_status_of_workflow(dag_id):
 
     '''
 
-    url = f"http://{os.environ['PUBLIC_IP']}:8080/{os.environ['OBC_USER_ID']}/api/experimental/dags/{dag_id}/dag_runs"
+    url = f"http://{os.environ['PUBLIC_IP']}:{os.environ['OBC_AIRFLOW_PORT']}/{os.environ['OBC_USER_ID']}/api/experimental/dags/{dag_id}/dag_runs"
     headers = {
         "Content-Type": "application/json",
         "Cache-Control": "no-cache"
@@ -524,7 +526,7 @@ def pause_workfow(dag_id,status):
     ‘<string:status>’ must be a ‘true’ to pause a DAG and ‘false’ to unpause.
     '''
 
-    url = f"http://{os.environ['PUBLIC_IP']}:8080/{os.environ['OBC_USER_ID']}/api/experimental/dags/{dag_id}/paused/{status}"
+    url = f"http://{os.environ['PUBLIC_IP']}:{os.environ['OBC_AIRFLOW_PORT']}/{os.environ['OBC_USER_ID']}/api/experimental/dags/{dag_id}/paused/{status}"
     headers = {
         "Content-Type": "application/json",
         "Cache-Control": "no-cache"

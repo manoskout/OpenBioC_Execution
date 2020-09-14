@@ -5,23 +5,21 @@
 # Therefore, this script must only derives Airflow AIRFLOW__ variables from other variables
 # when the user did not provide their own configuration.
 
-TRY_LOOP="20"
+TRY_LOOP="3"
 
 # Global defaults and back-compat
 : "${AIRFLOW_HOME:="/usr/local/airflow"}"
 : "${AIRFLOW__CORE__FERNET_KEY:=${FERNET_KEY:=$(python -c "from cryptography.fernet import Fernet; FERNET_KEY = Fernet.generate_key().decode(); print(FERNET_KEY)")}}"
-: "${AIRFLOW__CORE__EXECUTOR:=${EXECUTOR:-Sequential}Executor}"
+: "${AIRFLOW__CORE__EXECUTOR:=${EXECUTOR:-Local}Executor}"
+# export AIRFLOW__CORE__SQL_ALCHEMY_CONN="postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${EXECUTOR_DB_PORT}:${POSTGRES_PORT}/${POSTGRES_DB}${POSTGRES_EXTRAS}"
+#     export AIRFLOW__CORE__SQL_ALCHEMY_CONN
 
+# echo >&2 "$AIRFLOW__CORE__SQL_ALCHEMY_CONN"
 # Load DAGs examples (default: Yes)
 if [[ -z "$AIRFLOW__CORE__LOAD_EXAMPLES" && "${LOAD_EX:=n}" == n ]]; then
   AIRFLOW__CORE__LOAD_EXAMPLES=False
 fi
-#chmod -R 755 ${AIRFLOW_HOME}/templates/*
-#chmod 755 ${AIRFLOW_HOME}/client.py
-#chmod 755 /var/run/docker.sock
-# FIX DOCKER PY PROBLEM 
-#groupadd docker
-#usermod -aG docker ${USER}
+
 
 export \
   AIRFLOW_HOME \
@@ -31,7 +29,7 @@ export \
 
 
 wait_for_port() {
-  local name="$1" host="$2" port="$3"
+  local name="$1" host="$2" port="$3"  
   local j=0
   while ! nc -z "$host" "$port" >/dev/null 2>&1 < /dev/null; do
     j=$((j+1))
@@ -41,24 +39,25 @@ wait_for_port() {
     fi
     echo "$(date) - waiting for $name... $j/$TRY_LOOP"
     sleep 5
+    #export AIRFLOW__CORE__SQL_ALCHEMY_CONN="postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}${POSTGRES_EXTRAS}"
   done
 }
-
 # Other executors than SequentialExecutor drive the need for an SQL database, here PostgreSQL is used
 if [ "$AIRFLOW__CORE__EXECUTOR" != "SequentialExecutor" ]; then
+  echo >&2 "We are in"
   # Check if the user has provided explicit Airflow configuration concerning the database
   if [ -z "$AIRFLOW__CORE__SQL_ALCHEMY_CONN" ]; then
     # Default values corresponding to the default compose files
-    : "${POSTGRES_HOST:="postgres"}"
-    : "${POSTGRES_PORT:="5432"}"
+    : "${POSTGRES_HOST:="$PUBLIC_IP"}"
+    : "${POSTGRES_PORT:=$EXECUTOR_DB_PORT}"
     : "${POSTGRES_USER:="airflow"}"
     : "${POSTGRES_PASSWORD:="airflow"}"
     : "${POSTGRES_DB:="airflow"}"
     : "${POSTGRES_EXTRAS:-""}"
-
+    
     AIRFLOW__CORE__SQL_ALCHEMY_CONN="postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}${POSTGRES_EXTRAS}"
     export AIRFLOW__CORE__SQL_ALCHEMY_CONN
-
+    echo >&2 "$AIRFLOW__CORE__SQL_ALCHEMY_CONN --- <<<<<"
     # Check if the user has provided explicit Airflow configuration for the broker's connection to the database
     if [ "$AIRFLOW__CORE__EXECUTOR" = "CeleryExecutor" ]; then
       AIRFLOW__CELERY__RESULT_BACKEND="db+postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}${POSTGRES_EXTRAS}"
@@ -69,11 +68,12 @@ if [ "$AIRFLOW__CORE__EXECUTOR" != "SequentialExecutor" ]; then
       >&2 printf '%s\n' "FATAL: if you set AIRFLOW__CORE__SQL_ALCHEMY_CONN manually with CeleryExecutor you must also set AIRFLOW__CELERY__RESULT_BACKEND"
       exit 1
     fi
-
+    echo >&2 "EEEEE"
     # Derive useful variables from the AIRFLOW__ variables provided explicitly by the user
     POSTGRES_ENDPOINT=$(echo -n "$AIRFLOW__CORE__SQL_ALCHEMY_CONN" | cut -d '/' -f3 | sed -e 's,.*@,,')
     POSTGRES_HOST=$(echo -n "$POSTGRES_ENDPOINT" | cut -d ':' -f1)
     POSTGRES_PORT=$(echo -n "$POSTGRES_ENDPOINT" | cut -d ':' -f2)
+    echo >&2 "$POSTGRES_HOST --> HODT"
   fi
 
   wait_for_port "Postgres" "$POSTGRES_HOST" "$POSTGRES_PORT"
@@ -110,7 +110,9 @@ if [ "$AIRFLOW__CORE__EXECUTOR" = "CeleryExecutor" ]; then
 fi
 #Run OBC_client on background
 flask run &
-
+# airflow initdb &
+# airflow scheduler &
+# airflow webserver
 case "$1" in
   webserver)
     airflow initdb

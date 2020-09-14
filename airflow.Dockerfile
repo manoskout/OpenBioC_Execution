@@ -83,7 +83,7 @@ RUN set -ex \
         /usr/share/doc-base
 
 COPY client/airflow/script/entrypoint.sh /entrypoint.sh
-RUN pip install SQLAlchemy==1.3.15
+#RUN pip install SQLAlchemy==1.3.15
 RUN chown -R airflow: ${AIRFLOW_USER_HOME}
 
 

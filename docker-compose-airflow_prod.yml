@@ -12,6 +12,8 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    logging:
+      driver: none    
     container_name: "${EXECUTOR_INSTANCE}-OBC-Resource-Monitoring"
     
   postgres:
@@ -35,7 +37,7 @@ services:
       - netdata_monitor
     environment:
       #Airflow configuration
-      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:${EXECUTOR_DB_PORT}/airflow
+      # - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@6c2686ce11be:${EXECUTOR_DB_PORT}/airflow
       - AIRFLOW__WEBSERVER__BASE_URL=http://localhost:8080/${OBC_USER_ID}
       - LOAD_EX=n
       - EXECUTOR=Local
@@ -56,15 +58,16 @@ services:
       - WORKFLOW_FORMAT=${WORKFLOW_FORMAT}
     volumes:
       # Folder where airflow should store files
-      - dagairflowvolume:/usr/local/airflow/dags
-      - logairflowvolume:/usr/local/airflow/logs
-      - reportairflowvolume:/usr/local/airflow/REPORTS
+      - dagvolume:/usr/local/airflow/dags
+      - logvolume:/usr/local/airflow/logs
+      - reportvolume:/usr/local/airflow/REPORTS
       # Configuration File
       - ./airflow.cfg:/usr/local/airflow/airflow.cfg
       - /var/run/docker.sock:/var/run/docker.sock
       # For custom plugins
       #- ./plugins:/usr/local/airflow/plugins
       - ./client/client/client.py:/usr/local/airflow/client.py
+      - ./client/airflow/script/entrypoint.sh://entrypoint.sh
     ports:
       - "${OBC_WMS_PORT}:8080"
       - "${OBC_EXECUTOR_PORT}:5000"
@@ -77,6 +80,6 @@ services:
     container_name: "${EXECUTOR_INSTANCE}-OBC-${WORKFLOW_FORMAT}"
 volumes:
   # Dag volumes 
-  dagairflowvolume:
-  logairflowvolume:
-  reportairflowvolume:  
+  dagvolume:
+  logvolume:
+  reportvolume:  
