@@ -4,16 +4,17 @@ services:
     image: manoskoutoulakis/netdata_nginx:latest
     environment:
       - ID=${NETDATA_ID}
+      - REV_PORT=${NETDATA_MONITORING_PORT}
     ports:
-      - ${NETDATA_MONITORING_PORT}:19998
+      - "${NETDATA_MONITORING_PORT}:${NETDATA_MONITORING_PORT}"
     volumes:
       - /etc/passwd:/host/etc/passwd:ro
       - /etc/group:/host/etc/group:ro
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    logging:
-      driver: none    
+    # logging:
+    #   driver: none    
     container_name: "${EXECUTOR_INSTANCE}-OBC-Resource-Monitoring"
     
   postgres:
@@ -34,13 +35,12 @@ services:
     restart: always
     depends_on:
       - postgres
-      - netdata_monitor
     environment:
       #Airflow configuration
       # - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@6c2686ce11be:${EXECUTOR_DB_PORT}/airflow
       - AIRFLOW__WEBSERVER__BASE_URL=http://localhost:8080/${OBC_USER_ID}
       - LOAD_EX=n
-      - EXECUTOR=Local
+      # - EXECUTOR=Local
       - FERNET_KEY=jsDPRErfv8Z_eVTnGfF8ywd19j4pyqE3NpdUBA_oRTo=
       - FLASK_ENV=development
       #OBC Client environment variables

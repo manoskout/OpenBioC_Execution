@@ -11,10 +11,7 @@ TRY_LOOP="3"
 : "${AIRFLOW_HOME:="/usr/local/airflow"}"
 : "${AIRFLOW__CORE__FERNET_KEY:=${FERNET_KEY:=$(python -c "from cryptography.fernet import Fernet; FERNET_KEY = Fernet.generate_key().decode(); print(FERNET_KEY)")}}"
 : "${AIRFLOW__CORE__EXECUTOR:=${EXECUTOR:-Local}Executor}"
-# export AIRFLOW__CORE__SQL_ALCHEMY_CONN="postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${EXECUTOR_DB_PORT}:${POSTGRES_PORT}/${POSTGRES_DB}${POSTGRES_EXTRAS}"
-#     export AIRFLOW__CORE__SQL_ALCHEMY_CONN
 
-# echo >&2 "$AIRFLOW__CORE__SQL_ALCHEMY_CONN"
 # Load DAGs examples (default: Yes)
 if [[ -z "$AIRFLOW__CORE__LOAD_EXAMPLES" && "${LOAD_EX:=n}" == n ]]; then
   AIRFLOW__CORE__LOAD_EXAMPLES=False
@@ -39,7 +36,6 @@ wait_for_port() {
     fi
     echo "$(date) - waiting for $name... $j/$TRY_LOOP"
     sleep 5
-    #export AIRFLOW__CORE__SQL_ALCHEMY_CONN="postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}${POSTGRES_EXTRAS}"
   done
 }
 # Other executors than SequentialExecutor drive the need for an SQL database, here PostgreSQL is used
@@ -57,7 +53,6 @@ if [ "$AIRFLOW__CORE__EXECUTOR" != "SequentialExecutor" ]; then
     
     AIRFLOW__CORE__SQL_ALCHEMY_CONN="postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}${POSTGRES_EXTRAS}"
     export AIRFLOW__CORE__SQL_ALCHEMY_CONN
-    echo >&2 "$AIRFLOW__CORE__SQL_ALCHEMY_CONN --- <<<<<"
     # Check if the user has provided explicit Airflow configuration for the broker's connection to the database
     if [ "$AIRFLOW__CORE__EXECUTOR" = "CeleryExecutor" ]; then
       AIRFLOW__CELERY__RESULT_BACKEND="db+postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}${POSTGRES_EXTRAS}"
@@ -73,7 +68,6 @@ if [ "$AIRFLOW__CORE__EXECUTOR" != "SequentialExecutor" ]; then
     POSTGRES_ENDPOINT=$(echo -n "$AIRFLOW__CORE__SQL_ALCHEMY_CONN" | cut -d '/' -f3 | sed -e 's,.*@,,')
     POSTGRES_HOST=$(echo -n "$POSTGRES_ENDPOINT" | cut -d ':' -f1)
     POSTGRES_PORT=$(echo -n "$POSTGRES_ENDPOINT" | cut -d ':' -f2)
-    echo >&2 "$POSTGRES_HOST --> HODT"
   fi
 
   wait_for_port "Postgres" "$POSTGRES_HOST" "$POSTGRES_PORT"
@@ -110,9 +104,6 @@ if [ "$AIRFLOW__CORE__EXECUTOR" = "CeleryExecutor" ]; then
 fi
 #Run OBC_client on background
 flask run &
-# airflow initdb &
-# airflow scheduler &
-# airflow webserver
 case "$1" in
   webserver)
     airflow initdb

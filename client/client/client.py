@@ -552,6 +552,7 @@ def monitoring_dashboard():
     """
     Resource monitoring page.
     """
+    print_f(os.environ['NETDATA_MONITORING_PORT'],)
     dags_info = [{'status': 'Total','out': f"{execute_query('SELECT COUNT(1) FROM dag').fetchone()[0]}"},
            {'status': 'Running','out': f"{execute_query('SELECT COUNT(1) FROM dag_run').fetchone()[0]}"},
            {'status': 'Paused','out': f"{execute_query('SELECT COUNT(1) FROM dag WHERE is_paused').fetchone()[0]}"}]

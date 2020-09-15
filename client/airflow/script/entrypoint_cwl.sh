@@ -10,7 +10,7 @@ TRY_LOOP="20"
 # Global defaults and back-compat
 : "${AIRFLOW_HOME:="/usr/local/airflow"}"
 : "${AIRFLOW__CORE__FERNET_KEY:=${FERNET_KEY:=$(python -c "from cryptography.fernet import Fernet; FERNET_KEY = Fernet.generate_key().decode(); print(FERNET_KEY)")}}"
-: "${AIRFLOW__CORE__EXECUTOR:=${EXECUTOR:-Sequential}Executor}"
+: "${AIRFLOW__CORE__EXECUTOR:=${EXECUTOR:-Local}Executor}"
 
 # Not to be there (only for testing)
 export AIRFLOW__CWL__TMP_FOLDER=/usr/local/airflow/tmp
@@ -57,7 +57,7 @@ if [ "$AIRFLOW__CORE__EXECUTOR" != "SequentialExecutor" ]; then
   # Check if the user has provided explicit Airflow configuration concerning the database
   if [ -z "$AIRFLOW__CORE__SQL_ALCHEMY_CONN" ]; then
     # Default values corresponding to the default compose files
-    : "${POSTGRES_HOST:="postgres"}"
+    : "${POSTGRES_HOST:="$PUBLIC_IP"}"
     : "${POSTGRES_PORT:="$EXECUTOR_DB_PORT"}"
     : "${POSTGRES_USER:="airflow"}"
     : "${POSTGRES_PASSWORD:="airflow"}"

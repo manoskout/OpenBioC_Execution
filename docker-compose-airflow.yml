@@ -4,8 +4,9 @@ services:
     image: manoskoutoulakis/netdata_nginx:latest
     environment:
       - ID=${NETDATA_ID}
+      - REV_PORT=${NETDATA_MONITORING_PORT}
     ports:
-      - ${NETDATA_MONITORING_PORT}:19998
+      - "${NETDATA_MONITORING_PORT}:${NETDATA_MONITORING_PORT}"
     volumes:
       - /etc/passwd:/host/etc/passwd:ro
       - /etc/group:/host/etc/group:ro
