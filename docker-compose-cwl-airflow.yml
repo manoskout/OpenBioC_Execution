@@ -7,6 +7,8 @@ services:
       - REV_PORT=${NETDATA_MONITORING_PORT}
     ports:
       - "${NETDATA_MONITORING_PORT}:${NETDATA_MONITORING_PORT}"
+    logging:
+      driver: none
     volumes:
       - /etc/passwd:/host/etc/passwd:ro
       - /etc/group:/host/etc/group:ro
@@ -17,6 +19,7 @@ services:
     
   postgres:
     image: postgres:9.6
+    restart: on-failure
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -28,15 +31,10 @@ services:
   airflowserver:
     image: manoskoutoulakis/obc-cwl-airflow:1.10.10
     restart: always
-    depends_on:
-      - postgres
-      - netdata_monitor
     environment:
       #Airflow configuration
-      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:${EXECUTOR_DB_PORT}/airflow
       - AIRFLOW__WEBSERVER__BASE_URL=http://localhost:8080/${OBC_USER_ID}
       - LOAD_EX=n
-      - EXECUTOR=Local
       - FERNET_KEY=jsDPRErfv8Z_eVTnGfF8ywd19j4pyqE3NpdUBA_oRTo=
       #OBC Client environment variables
       - NETDATA_ID=${NETDATA_ID}

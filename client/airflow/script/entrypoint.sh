@@ -40,7 +40,6 @@ wait_for_port() {
 }
 # Other executors than SequentialExecutor drive the need for an SQL database, here PostgreSQL is used
 if [ "$AIRFLOW__CORE__EXECUTOR" != "SequentialExecutor" ]; then
-  echo >&2 "We are in"
   # Check if the user has provided explicit Airflow configuration concerning the database
   if [ -z "$AIRFLOW__CORE__SQL_ALCHEMY_CONN" ]; then
     # Default values corresponding to the default compose files
@@ -63,7 +62,6 @@ if [ "$AIRFLOW__CORE__EXECUTOR" != "SequentialExecutor" ]; then
       >&2 printf '%s\n' "FATAL: if you set AIRFLOW__CORE__SQL_ALCHEMY_CONN manually with CeleryExecutor you must also set AIRFLOW__CELERY__RESULT_BACKEND"
       exit 1
     fi
-    echo >&2 "EEEEE"
     # Derive useful variables from the AIRFLOW__ variables provided explicitly by the user
     POSTGRES_ENDPOINT=$(echo -n "$AIRFLOW__CORE__SQL_ALCHEMY_CONN" | cut -d '/' -f3 | sed -e 's,.*@,,')
     POSTGRES_HOST=$(echo -n "$POSTGRES_ENDPOINT" | cut -d ':' -f1)
@@ -106,6 +104,8 @@ fi
 flask run &
 case "$1" in
   webserver)
+    # prepare database (With the sleep we wait Database to restart)
+    sleep 10
     airflow initdb
     if [ "$AIRFLOW__CORE__EXECUTOR" = "LocalExecutor" ] || [ "$AIRFLOW__CORE__EXECUTOR" = "SequentialExecutor" ]; then
       # With the "Local" and "Sequential" executors it should all run in one container.

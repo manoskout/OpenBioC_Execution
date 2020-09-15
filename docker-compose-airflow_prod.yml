@@ -7,18 +7,19 @@ services:
       - REV_PORT=${NETDATA_MONITORING_PORT}
     ports:
       - "${NETDATA_MONITORING_PORT}:${NETDATA_MONITORING_PORT}"
+    logging:
+      driver: none
     volumes:
       - /etc/passwd:/host/etc/passwd:ro
       - /etc/group:/host/etc/group:ro
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    # logging:
-    #   driver: none    
+      - /var/run/docker.sock:/var/run/docker.sock:ro    
     container_name: "${EXECUTOR_INSTANCE}-OBC-Resource-Monitoring"
     
   postgres:
     image: postgres:9.6
+    restart: on-failure
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -33,8 +34,6 @@ services:
       dockerfile: airflow.Dockerfile
     #image: manoskoutoulakis/obc-airflow:1.10.9
     restart: always
-    depends_on:
-      - postgres
     environment:
       #Airflow configuration
       # - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@6c2686ce11be:${EXECUTOR_DB_PORT}/airflow
