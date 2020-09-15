@@ -21,7 +21,7 @@ Install OpenBio Execution Environment
 -e --execution_environment : Specify the type of execution engine.
                              Available options: airflow, cwl-airflow 
 
--d  --execution_env_dir         : Directory of docker compose files and configurations. Default : /home/${USER}
+-d  --execution_env_dir    : Directory of docker compose files and configurations. Default : /home/${USER}
 
 -W --workflow_port         : Workflow Management System Port. Default: 8080
 
