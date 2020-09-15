@@ -18,18 +18,18 @@ Install OpenBio Execution Environment
 
 -h --help                  : Display help
 
--e --execution-environment : Specify the type of execution engine.
+-e --execution_environment : Specify the type of execution engine.
                              Available options: airflow, cwl-airflow 
 
--d  --execution-env-dir         : Directory of docker compose files and configurations. Default : /home/${USER}
+-d  --execution_env_dir         : Directory of docker compose files and configurations. Default : /home/${USER}
 
--W --workflow-port         : Workflow Management System Port. Default: 8080
+-W --workflow_port         : Workflow Management System Port. Default: 8080
 
--O --api-port              : OpenBio API Port. Default: 5000
+-O --api_port              : OpenBio API Port. Default: 5000
 
--D --database-port         : Database Port. Default: 5432
+-D --database_port         : Database Port. Default: 5432
 
--R --resource-port         : Resource Monitoring Port. Default: 19998
+-R --resource_port         : Resource Monitoring Port. Default: 19998
 
 EOF
 # EOF is found above and hence cat command stops reading. This is equivalent to echo but much neater when printing out.
@@ -39,7 +39,7 @@ EOF
 wmsError() {
 cat << EOF
 Unrecognized type of execution engine - $1
--e  --execution-environment : Specify the type of execution engine.
+-e  --execution_environment : Specify the type of execution engine.
                               Available options: airflow, cwl-airflow 
 EOF
 exit 1
@@ -59,7 +59,7 @@ portcheck (){
 # -l is for long options with double dash like --version
 # the comma separates different long options
 # -a is for long options with single dash like -version
-options=$(getopt -l "help,execution-environment:,execution-env-dir:,workflow-port:,api-port:,database-port:,resource-port:" -o "he:d:W:O:D:R: " -a -- "$@")
+options=$(getopt -l "help,execution_environment:,execution_env_dir:,workflow_port:,api_port:,database_port:,resource_port:" -o "he:d:W:O:D:R: " -a -- "$@")
 
 # set --:
 # If no arguments follow this option, then the positional parameters are unset. Otherwise, the positional parameters 
@@ -73,17 +73,17 @@ do
         showHelp
         exit 0
         ;;
-    -e|--exec) 
+    -e|--execution_environment) 
         export WMS=$2; shift 2;;
-    -d|--execution-env-dir)
+    -d|--execution_env_dir)
 		export ENVIRONMENT_PATH=$2; shift 2;; #OBC_EXECUTOR_PATH
-    -W|--workflow-port)
+    -W|--workflow_port)
         export WMS_PORT=$2; shift 2;;
-    -O|--api-port)
+    -O|--api_port)
         export API_PORT=$2; shift 2;;
     -D|--database-port)
         export DB_PORT=$2; shift 2;;
-    -R|--resource-port)
+    -R|--resource_port)
         export RESOURCE_PORT=$2; shift 2;;
     --) shift; break ;;
     *) break ;;
@@ -171,12 +171,10 @@ if [[ "$WMS" == *"airflow"* ]]; then
 	wget -O ${WHOLE_ENV_PATH}/airflow.cfg https://raw.githubusercontent.com/manoskout/OpenBioC_Execution/master/airflow.cfg
 fi
 
-echo "aaa -> $(pwd)"
 
 # Set obc_executor_run.sh (Optional)
 # wget https://raw.githubusercontent.com/manoskout/docker-airflow/master/obc_executor_run.sh
 echo -e "[${YELLOW}-${NC}] Running Directory : $(pwd)"
-echo "aaa -> $(pwd)"
 
 
 # Environment variables that used from Executor
@@ -196,10 +194,8 @@ WORKFLOW_FORMAT=${WMS}
 EOF
 
 #TODO -> change using docker-compose up -f asfsedfsdf.yml(FAILED)
-echo "aaa -> $(pwd)"
 
 cd $WHOLE_ENV_PATH
-echo "aaa -> $(pwd)"
 docker-compose up --build -d
 
 if [ $? -eq 0 ] ; then 
