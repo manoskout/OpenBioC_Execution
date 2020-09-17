@@ -225,7 +225,7 @@ def get_tool_OBC_rest(callback,tool_id, tl_name, tl_edit, tl_version,tl_type):
     return dag_contents
 
 
-def get_workflow_OBC_rest(callback,workflow_name, workflow_edit,workflow_format,workflow_id):
+def get_workflow_OBC_rest(callback,workflow_name, workflow_edit,workflow_format,workflow_id,input_parameters):
     '''
     Send GET request to OBC REST to get the dagfile
     https://openbio.eu/platform/rest/workflows/<workflow_name>/<workflow_edit>/?workflow_id=<workflow_id>&format=<format>
@@ -234,7 +234,7 @@ def get_workflow_OBC_rest(callback,workflow_name, workflow_edit,workflow_format,
     dag_contents={}
     #FIX FOR TESTS ONLY
     if workflow_format=="airflow":
-        url = f'{callback}rest/workflows/{workflow_name}/{workflow_edit}/?workflow_id={workflow_id}&format={workflow_format}'
+        url = f'{callback}rest/workflows/{workflow_name}/{workflow_edit}/?workflow_id={workflow_id}&format={workflow_format}&{input_parameters}'
         #We have to define the headers in order to take a json object of a workflow
         print_f(url)
         headers= {'accept': 'application/json'}
@@ -242,12 +242,12 @@ def get_workflow_OBC_rest(callback,workflow_name, workflow_edit,workflow_format,
         dag_contents=response.json()
  
     elif workflow_format=="cwl-airflow":
-        url = f'{callback}rest/workflows/{workflow_name}/{workflow_edit}/?workflow_id={workflow_id}&format=cwlzip'
+        url = f'{callback}rest/workflows/{workflow_name}/{workflow_edit}/?workflow_id={workflow_id}&format=cwlzip&{input_parameters}'
         response = requests.get(url)
         # print_f(url)
         # folder creation, unzip file into the dag folder 
         cwl_zip_path= f"{os.environ['AIRFLOW_HOME']}/dags/cwl" 
-        print_f("--------------- I AM IN ---------------------")
+        # print_f("--------------- I AM IN ---------------------")
         # Create cwl folder containing the workflows
         try: 
             os.mkdir(cwl_zip_path)
@@ -285,14 +285,7 @@ def get_the_inputs_of_cwl_wf(inputs_file_path):
     """
     It gets the inputs from the workflow folder and parse the YAML file to json
     """
-    with open(inputs_file_path, 'r') as stream:
-        try:
-            loaded_inputs = yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
-    # Shouldn't Exists
-    if loaded_inputs is None:
-        loaded_inputs={
+    loaded_inputs={
           "conf":
           {"job":{
               "OBC_TOOL_PATH": "/usr/local/airflow/REPORTS/TOOL",
@@ -302,6 +295,15 @@ def get_the_inputs_of_cwl_wf(inputs_file_path):
             }
           }
         }
+    with open(inputs_file_path, 'r') as stream:
+        try:
+            parsed_inputs = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
+    # Shouldn't Exists
+    if parsed_inputs is not None:
+        aaa["conf"]["job"].update(loaded_inputs)
+        
 
     return loaded_inputs
 
@@ -384,11 +386,13 @@ def run_wf():
     d = request.get_data()
     data = json.loads(request.get_data())
     # Must be changed from OPENBIO
+    print_f(data)
     name = data['name']
     edit = data['edit']
     workflow_format = os.environ['WORKFLOW_FORMAT']
     callback= data['callback']        
     workflow_id = data['workflow_id']
+    input_parameters=data['input_parameters']
     # TOOL Not used
     # if workflow_format == 'tool':
     #     tool_id = data['tool_id']
@@ -414,7 +418,7 @@ def run_wf():
             payload['status']='failed'
             payload['reason']=wf_contents
     elif workflow_format == 'cwl-airflow':
-        wf_contents = get_workflow_OBC_rest(callback,name,edit,workflow_format,workflow_id)
+        wf_contents = get_workflow_OBC_rest(callback,name,edit,workflow_format,workflow_id,input_parameters)
         if wf_contents['success']!='failed':
             cwl_wf_path=f"{os.environ['AIRFLOW_HOME']}/dags/cwl/{workflow_id}"
             generate_cwl_dag_file(workflow_id,cwl_wf_path)
