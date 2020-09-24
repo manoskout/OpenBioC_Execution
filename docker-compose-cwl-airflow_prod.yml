@@ -34,6 +34,7 @@ services:
     build:
       context: .
       dockerfile: cwl_airflow.Dockerfile
+      #dockerfile: cwl_airflow_test.Dockerfile
     restart: always
     environment:
       #Airflow configuration

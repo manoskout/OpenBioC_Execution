@@ -369,10 +369,7 @@ def dag__trigger(id,name,edit,configuration_data):
             time.sleep(1)
         else:
             break
-    # print_f(response.json())
     return response.json()
-
-
 
 @app.route(f"/{os.environ['OBC_USER_ID']}/run", methods=['POST'])
 def run_wf():
@@ -437,6 +434,7 @@ def run_wf():
             payload['status']='failed'
             payload['reason']=wf_contents
     elif workflow_format == 'cwl-airflow':
+        # check_cwl_tmp_folder("/usr/local/airflow/tmp")
         wf_contents = get_workflow_OBC_rest(callback,name,edit,workflow_format,workflow_id,input_parameters)
         if wf_contents['status']!='failed':
             cwl_wf_path=f"{os.environ['AIRFLOW_HOME']}/dags/cwl/{workflow_id}"
@@ -451,7 +449,6 @@ def run_wf():
         else:
             payload['status']='failed'
             payload['reason']=wf_contents    
-        shutil.rmtree("/usr/local/airflow/tmp")
     else:
         payload['status']="failed"
         payload['error']="Unknown type (worfkflow or tool)"

@@ -90,10 +90,11 @@ RUN apt-get update -yqq \
     && pip install cwl-airflow==1.2.2
 COPY client/airflow/script/entrypoint_cwl.sh /entrypoint_cwl.sh
 
-RUN pip install -U cwltool
+#RUN pip install cwltool
 
 RUN chown -R airflow: ${AIRFLOW_USER_HOME}
-
+# Fix the basename error (During the execution by providing new file)
+COPY ./command_line_tool.py /usr/local/lib/python3.7/site-packages/cwltool/command_line_tool.py 
 
 #USER airflow
 #Set OBC_Client
